@@ -1,0 +1,34 @@
+name:               json
+version:            0.1
+synopsis:           Support for serialising Haskell to and from JSON
+description:        .
+    JSON (JavaScript Object Notation) is a lightweight data-interchange
+    format. It is easy for humans to read and write. It is easy for
+    machines to parse and generate.  It is based on a subset of the
+    JavaScript Programming Language, Standard ECMA-262 3rd Edition -
+    December 1999.  
+    .
+    This library provides a parser and pretty printer for converting
+    between Haskell values and JSON.
+category:           Web
+license:            BSD3
+license-file:       LICENSE
+author:             Galois Inc.
+maintainer:         Galois Inc
+Copyright:          (c) 2007 Galois Inc.
+cabal-version:      >= 1.2.0
+
+flag split-base
+
+library
+  build-depends:     mtl
+  if flag(split-base)
+    build-depends:   base >= 3, pretty, array, containers, bytestring
+  else
+    build-depends:   base < 3
+
+  exposed-modules: Text.JSON
+  ghc-options:     -Wall -O2 -fglasgow-exts -fbang-patterns -fallow-overlapping-instances
+--  extensions: GeneralizedNewtypeDeriving,
+--              BangPatterns, PatternSignatures,
+--              FlexibleContexts, FlexibleInstances, OverlappingInstances
