@@ -1,6 +1,7 @@
-{- LANGUAGE BangPatterns, PatternSignatures                         -}
-{- LANGUAGE GeneralizedNewtypeDeriving                              -}
-{- LANGUAGE FlexibleContexts FlexibleInstances OverlappingInstances -}
+{-# LANGUAGE BangPatterns, PatternSignatures                     #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving                          #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances                 #-}
+{-# LANGUAGE OverlappingInstances                                #-}
 
 --------------------------------------------------------------------
 -- |
@@ -18,64 +19,57 @@
 --
 
 module Text.JSON (
+    -- * JSON Types
+    JSType(..)
 
-        -- * The JSType
-        JSType(..),
+    -- * Serialization to and from JSTypes
+  , JSON(..)
 
-        -- ** Convenient wrapper types
-        JSONString(..),
-        JSONObject(..),
+    -- * Encoding and Decoding
+  , encode -- :: JSON a => a -> String
+  , decode -- :: JSON a => String -> Either String a
 
-        -- * JSON serialising
-        JSON(..),
+    -- * Wrapper Types
+  , JSONString(JSONString)
+  , fromJSString
 
-        -- ** A writer monad for JSON serialising
-        PutJSON(..),
-        runPutJSON,     -- :: PutJSON a -> String
+  , JSONObject(JSONObject)
+  , fromJSObject
 
-        -- ** A state monad with error handling for JSON reading
-        GetJSON(..),
-        runGetJSON,     -- :: GetJSON a -> String -> Either String a
+    -- * Low leve parsing
+    -- ** Reading JSON
+  , readJSNull, readJSBool, readJSString, readJSInteger, readJSRational
+  , readJSArray, readJSObject, readJSType
 
-        -- * Serialising Haskell to JSON format
-        encode,     -- :: JSON a => a -> String
-        decode,     -- :: JSON a => String -> Either String a
+    -- ** Writing JSON
+  , showJSNull, showJSBool, showJSInteger, showJSDouble, showJSArray
+  , showJSObject, showJSType
 
-        -- * Low level parsing
-        -- ** Reading JSON
-        readJSNull, readJSBool, readJSString, readJSInteger, readJSRational,
-        readJSArray, readJSObject,
+  ) where
 
-        -- ** Writing JSON
-        showJSNull, showJSBool, showJSString, showJSInteger, showJSDouble,
-        showJSArray, showJSObject
-
-
-   ) where
-
+import Control.Applicative
+import Control.Arrow
 import Control.Monad.Error
 import Control.Monad.State
-import Control.Monad.Writer
-import Control.Applicative
-import Control.Arrow (first)
-
 import Data.Char
 import Data.List
-import Data.Word
 import Data.Int
 import Data.Ratio
-import Data.Generics
+import Data.Word
 
 import Numeric
 
--- And needed for the instances:
-import qualified Data.ByteString.Char8      as S
-import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.IntSet     as IntSet
--- import qualified Data.Sequence   as Seq
-import qualified Data.Map        as M
--- import qualified Data.IntMap     as I
--- import Data.Array.Unboxed
+
+-- | Convenient error generation
+mkError :: (JSON a) => String -> Either String a
+mkError s = throwError . strMsg $ s
+
+-- | Decode a JSON String
+decode :: (JSON a) => String -> Either String a
+decode s = readJSON =<< runGetJSON readJSType s
+
+encode :: (JSON a) => a -> String
+encode = (flip showJSType [] . showJSON)
 
 --
 -- | JSON values
@@ -108,61 +102,9 @@ data JSType
     | JSObject   { unJSObject   :: (JSONObject JSType) }
     deriving (Show, Read, Eq, Ord)
 
---------------------------------------------------------------------
--- Some simple JSON wrapper types, to avoid overlapping instances
-
--- | Strings can be represented a little more efficiently in JSON
-newtype JSONString   = JSONString { fromJSString :: String        }
-    deriving (Eq, Ord, Show, Read)
-
--- | As can association lists
-newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
-    deriving (Eq, Ord, Show, Read)
-
--- -----------------------------------------------------------------
---
--- |Serialising to and from JSON-formatted Strings
---
 class JSON a where
-    -- | Encode a value into JSON
-    showJSON :: a -> PutJSON ()
-
-    -- | Decode a value from JSON
-    readJSON :: GetJSON a
-
--- | The type of JSON writers
-newtype PutJSON a = PutJSON { unPut :: Writer ShowS a }
-    deriving (Functor, Monad, MonadWriter ShowS)
-
--- | Run a JSON writer, with some Haskell type, returning a String
-runPutJSON :: PutJSON a -> String
-runPutJSON = ($ []) . snd . runWriter . unPut
-
--- | The type of JSON parsers for String
-newtype GetJSON a = GetJSON { unGet :: ErrorT String (State String) a }
-    deriving (Functor, Monad, MonadState String)
-
-instance Applicative GetJSON where
-    pure  = return
-    (<*>) = ap
-
-instance Applicative PutJSON where
-    pure  = return
-    (<*>) = ap
-
--- | Run a JSON reader on an input String, returning some Haskell value
-runGetJSON :: GetJSON a -> String -> Either String a
-runGetJSON (GetJSON m) s = evalState (runErrorT m) s
-
---------------------------------------------------------------------
-
--- | Encode a value using JSON format to a String
-encode :: JSON a => a -> String
-encode = runPutJSON . showJSON
-
--- | Decode a value from a JSON-encoded String
-decode :: JSON a => String -> Either String a
-decode = runGetJSON readJSON
+  readJSON :: JSType -> Either String a
+  showJSON :: a -> JSType
 
 --------------------------------------------------------------------
 --
@@ -170,280 +112,23 @@ decode = runGetJSON readJSON
 -- internally, then pretty print that.
 --
 instance JSON JSType where
-
-    showJSON x = case x of
-      JSBool b     -> tell $ showJSBool b
-      JSNull       -> tell $ showJSNull
-      JSString  s  -> tell $ showJSString  s
-      JSInteger n  -> tell $ showJSInteger n
-      JSRational d -> tell $ showJSDouble d
-      JSArray    s -> showJSArray s
-      JSObject   o -> showJSObject (fromJSObject o)
-
-    readJSON = do
-        cs <- get
-        case cs of
-          'n':_ -> readJSNull
-          't':_ -> readJSBool
-          'f':_ -> readJSBool
-          '"':_ -> readJSString
-          '[':_ -> JSArray  <$> readJSArray
-          '{':_ -> JSObject . JSONObject <$> readJSObject
-          _  -> do
-               n <- readJSRational
-               return $ if denominator n == 1
-                            then JSInteger  (numerator n)
-                            else JSRational (fromRational n)
-
--- -----------------------------------------------------------------
--- Custom instances for wrapper types
-
-instance JSON JSONString where
-  showJSON = showJSON <$> JSString
-  readJSON = unJSString <$> readJSON
-
--- -----------------------------------------------------------------
--- Instances
---
-
-instance JSON () where
-  showJSON _ = showJSON JSNull
-  readJSON   = do JSNull <- readJSON; return ()
-
-instance JSON Bool where
-  showJSON = showJSON . JSBool
-  readJSON = unJSBool <$> readJSON
-
-instance JSON Char where
-  showJSON = showJSON . JSONString . return
-  readJSON = head . fromJSString <$> readJSON
-
--- -----------------------------------------------------------------
--- Integral types
-
-instance JSON Integer where
-  showJSON = showJSON . JSInteger
-  readJSON = unJSInteger <$> readJSON
-
--- constrained:
-instance JSON Int where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
--- constrained:
-instance JSON Word where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
--- -----------------------------------------------------------------
-
-instance JSON Word8 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Word16 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Word32 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Word64 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Int8 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Int16 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Int32 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
-instance JSON Int64 where
-  showJSON = showJSON . toInteger
-  readJSON = fromIntegral . unJSInteger <$> readJSON
-
--- -----------------------------------------------------------------
-
-instance JSON Double where
-  showJSON = showJSON . JSRational
-  readJSON = fromRational <$> readJSRational
-    -- can't use JSRational here, due to ambiguous '0' parse
-    -- it will parse as Integer.
-
-instance JSON Float where
-  showJSON = showJSON . (realToFrac :: Float -> Double)
-  readJSON = (realToFrac :: Double -> Float) <$> readJSON
-
-{-
--- Can't serialise rationals very well
---instance JSON Rational where
---  showJSON = showJSDouble . fromRational
---  readJSON = readJSRational
--}
-
--- -----------------------------------------------------------------
--- sums
-
--- | Find the name of a constructor
-constructor :: Data a => a -> String
-constructor = show . toConstr
-
--- | Return the constructor as an integer string
-tag :: (Enum a, Show a) => a -> String
-tag = show . fromEnum
-
--- | Convenience for introducing and destroying constructors
-toObject :: JSON a => (String, a) -> PutJSON ()
-toObject = showJSON . JSONObject . (:[])
-
-fromObject :: JSON a => GetJSON (String,a)
-fromObject = do [a] <- fromJSObject <$> readJSON; return a
-
--- Ok, Orderings we just write the constructor tag as an Integer, and
--- show the constructor for fun.
-instance JSON Ordering where
-    showJSON x = toObject (tag x, constructor x)
-    readJSON = do (n,_::String) <- fromObject; return (toEnum (read n))
-
--- We write the tag, then maybe the package.
---
--- > {"0":null}
--- > {"1":"magic"}
---
-instance JSON a => JSON (Maybe a) where
-  showJSON x = case x of
-                    Nothing -> toObject (show (0::Int), ())
-                    Just n  -> toObject (show (1::Int), n)
-
-  readJSON = do (n,v) <- fromObject
-                return $ case n of
-                    "0" -> Nothing
-                    "1" -> Just v
-                    _ -> fail "Malformed JSON data: invalid tag :: Maybe"
-
---
--- We have to hide the type of the branch, since they're 
--- different
---
--- Since we can't decompose these things nicely, recursively, the read
--- instance is a bit ugly for my liking.
---
--- We need a way to dispatch without asking for the entire object.
---
-instance (JSON a, JSON b) => JSON (Either a b) where
-  showJSON x = case x of
-                    Left  l -> toObject (show (0::Int), encode l)
-                    Right r -> toObject (show (1::Int), encode r)
-
-  readJSON = do (n,v) <- fromObject
-                case n of
-                    "0" -> let Right x = decode v in return $ Left x
-                    "1" -> let Right x = decode v in return $ Right x
-                    _   -> fail "Malformed JSON data: invalid tag :: Either"
-
--- -----------------------------------------------------------------
--- products
-
--- More hacks to let recursive decent work :(
-
--- 2 tuples
-instance (JSON a, JSON b) => JSON (a,b) where
-  showJSON (a,b) = showJSON . JSONObject $ [(show (0 :: Int), encode a)
-                                           ,(show (1 :: Int), encode b)]
-  readJSON = do [("0",a),("1",b)] <- fromJSObject <$> readJSON
-                let Right x = decode a
-                    Right y = decode b
-                return (x,y)
-
--- 3 tuples
-instance (JSON a, JSON b, JSON c) => JSON (a,b,c) where
-  showJSON (a,b,c) = showJSON . JSONObject $ [(show (0::Int), encode a)
-                                             ,(show (1::Int), encode b)
-                                             ,(show (2::Int), encode c)]
-
-  readJSON = do [("0",a),("1",b),("2",c)] <- fromJSObject <$> readJSON
-                let Right x = decode a
-                    Right y = decode b
-                    Right z = decode c
-                return (x,y,z)
-
--- -----------------------------------------------------------------
--- List-like types
-
--- We really need to support Strings properly:
-instance JSON [Char] where
-  showJSON = showJSON . JSONString
-  readJSON = fromJSString <$> readJSON
-
-instance JSON a => JSON [a] where
-  showJSON = showJSArray
-  readJSON = readJSArray
-
-instance JSON S.ByteString where
-  showJSON = showJSON . JSONString . S.unpack
-  readJSON = S.pack . fromJSString <$> readJSON
-
-instance JSON L.ByteString where
-  showJSON = showJSON . JSONString . L.unpack
-  readJSON = L.pack . fromJSString <$> readJSON
-
-instance JSON IntSet.IntSet where
-  showJSON = showJSON . IntSet.toAscList
-  readJSON = IntSet.fromDistinctAscList <$> readJSArray
-
-{-
-instance (JSON e) => JSON (Seq.Seq e) where
-  showJSON s = showJSON . flip unfoldr s $ \sq -> case Seq.viewl sq of
-                    Seq.EmptyL     -> Nothing
-                    (Seq.:<) e sq' -> Just (e,sq')
-  readJSON = Seq.fromList <$> readJSON
--}
-
--- ---------------------------------------------------------------------
--- Container types
-
-instance (JSON e) => JSON (JSONObject e) where
-  showJSON = showJSObject . fromJSObject
-  readJSON = JSONObject <$> readJSObject
-
-instance (Read k, Show k, Ord k, JSON e) => JSON (M.Map k e) where
-  showJSON = showJSON . JSONObject . map (first show) . M.toList
-  readJSON = M.fromList . map (first read) . fromJSObject <$> readJSON
-
-------------------------------------------------------------------------
-
-{-
-instance (JSON i, Num i,Ix i, JSON e) => JSON (Array i e) where
-
-    showJSON = showJSON . elems
-    readJSON x = case readJSON x of
-                       Just (xs, "") -> Just $ listArray (0,n-1) xs
-                            where n = genericLength xs
-                       _             -> Nothing
--}
-
-{-
---
--- The IArray UArray e constraint is non portable. Requires flexible instances
---
-instance (JSON i, Num i, Ix i, JSON e, IArray UArray e) => JSON (UArray i e) where
-
-    showJSON = showJSON . elems
-    readJSON x = case readJSON x of
-                       Just (xs, "") -> Just $ listArray (0,n-1) xs
-                            where n = genericLength xs
-                       _             -> Nothing
--}
+    showJSON = id
+    readJSON = return . id
 
 -- -----------------------------------------------------------------
 -- | Parsing JSON
+
+-- | The type of JSON parsers for String
+newtype GetJSON a = GetJSON (ErrorT String (State String) a)
+    deriving (Functor, Monad, MonadState String, MonadError String)
+
+instance Applicative GetJSON where
+    pure  = return
+    (<*>) = ap
+
+-- | Run a JSON reader on an input String, returning some Haskell value
+runGetJSON :: GetJSON a -> String -> Either String a
+runGetJSON (GetJSON m) s = evalState (runErrorT m) s
 
 -- | Find 8 chars context, for error messages
 context :: String -> String
@@ -549,16 +234,16 @@ readJSRational = do
             _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
 
 -- | Read a list in JSON format
-readJSArray  :: JSON a => GetJSON [a]
-readJSArray  = readSequence '[' ']' ','
+readJSArray  :: GetJSON JSType
+readJSArray  = readSequence '[' ']' ',' >>= return . JSArray
 
 -- | Read an object in JSON format
-readJSObject :: JSON a => GetJSON [(String,a)]
-readJSObject = readAssocs '{' '}' ','
+readJSObject :: GetJSON JSType
+readJSObject = readAssocs '{' '}' ',' >>= return . JSObject . JSONObject
 
 
 -- | Read a sequence of items
-readSequence :: JSON a => Char -> Char -> Char -> GetJSON [a]
+readSequence :: Char -> Char -> Char -> GetJSON [JSType]
 readSequence start end sep = do
   zs <- get
   case dropWhile isSpace zs of
@@ -569,7 +254,7 @@ readSequence start end sep = do
     _ -> fail $ "Unable to parse JSON sequence: sequence stars with invalid character: " ++ context zs
 
   where parse !rs = do
-          a  <- readJSON
+          a  <- readJSType
           ds <- get
           case dropWhile isSpace ds of
             e : es | e == sep -> do put (dropWhile isSpace es)
@@ -580,7 +265,7 @@ readSequence start end sep = do
 
 
 -- | Read a sequence of JSON labelled fields
-readAssocs :: JSON a => Char -> Char -> Char -> GetJSON [(String,a)]
+readAssocs :: Char -> Char -> Char -> GetJSON [(String,JSType)]
 readAssocs start end sep = do
   zs <- get
   case dropWhile isSpace zs of
@@ -594,7 +279,7 @@ readAssocs start end sep = do
                    ds <- get
                    case dropWhile isSpace ds of
                        ':':es -> do put (dropWhile isSpace es)
-                                    v <- readJSON
+                                    v <- readJSType
                                     return (k,v)
                        _      -> fail $ "Malformed JSON labelled field: " ++ context ds
 
@@ -608,8 +293,32 @@ readAssocs start end sep = do
                             ++ context ds
 
 
+readJSType :: GetJSON JSType
+readJSType = do
+  cs <- get
+  case cs of
+    '"' : _ -> readJSString
+    '[' : _ -> readJSArray
+    '{' : _ -> readJSObject
+    't' : _ -> readJSBool
+    'f' : _ -> readJSBool
+    xs | "null" `isPrefixOf` xs -> readJSNull
+    _ -> do n <- readJSRational
+            return (if denominator n == 1 then JSInteger  (numerator n)
+                                          else JSRational (fromRational n))
+
 -- -----------------------------------------------------------------
 -- | Writing JSON
+
+-- | Show JSON Types
+showJSType :: JSType -> ShowS
+showJSType (JSNull)       = showJSNull
+showJSType (JSBool b)     = showJSBool b
+showJSType (JSInteger i)  = showJSInteger i
+showJSType (JSRational r) = showJSDouble r
+showJSType (JSArray a)    = showJSArray a
+showJSType (JSString s)   = showJSString s
+showJSType (JSObject o)   = showJSObject o
 
 -- | Write the JSON null type
 showJSNull :: ShowS
@@ -617,7 +326,8 @@ showJSNull = showString "null"
 
 -- | Write the JSON Bool type
 showJSBool :: Bool -> ShowS
-showJSBool b = showString (if b then "true" else "false")
+showJSBool True  = showString "true"
+showJSBool False = showString "false"
 
 -- | Write the JSON String type
 showJSString :: JSONString -> ShowS
@@ -648,35 +358,165 @@ showJSInteger = shows
 showJSDouble :: Double -> ShowS
 showJSDouble x = if isInfinite x || isNaN x then showJSNull else shows x
 
-------------------------------------------------------------------------
--- The rescursive show primitivies run in Put.
-
 -- | Show a list in JSON format
-showJSArray :: JSON a => [a] -> PutJSON ()
+showJSArray :: [JSType] -> ShowS
 showJSArray = showSequence '[' ']' ','
 
 -- | Show an association list in JSON format
-showJSObject :: JSON a => [(String,a)] -> PutJSON ()
-showJSObject = showAssocs '{' '}' ','
+showJSObject :: JSONObject JSType -> ShowS
+showJSObject (JSONObject o) = showAssocs '{' '}' ',' o
 
 -- | Show a generic sequence of pairs in JSON format
-showAssocs :: JSON a => Char -> Char -> Char -> [(String,a)] -> PutJSON ()
-showAssocs start end sep xs = do
-    tell $ showChar start
-    sequence_ $ intersperse
-                    (tell $ showChar sep)
-                           (map (\(s,a) -> do
-                                    showJSON (JSONString s)
-                                    tell $ showChar ':'
-                                    showJSON a
-                              ) xs)
-    tell $ showChar end
+showAssocs :: Char -> Char -> Char -> [(String,JSType)] -> ShowS
+showAssocs start end sep xs rest = (start:[])
+    ++ concat (intersperse (sep:[]) $ map mkRecord xs)
+    ++ (end:[]) ++ rest
+  where mkRecord (k,v) = show k ++ ":" ++ showJSType v []
 
 -- | Show a generic sequence in JSON format
-showSequence :: JSON a => Char -> Char -> Char -> [a] -> PutJSON ()
-showSequence start end sep xs = do
-    tell $ showChar start
-    sequence_ $ intersperse
-                    (tell $ showChar sep)
-                           (map showJSON xs)
-    tell $ showChar end
+showSequence :: Char -> Char -> Char -> [JSType] -> ShowS
+showSequence start end sep xs rest = (start:[])
+  ++ concat (intersperse (sep:[]) $ map (flip showJSType []) xs)
+  ++ (end:[]) ++ rest
+
+
+--------------------------------------------------------------------
+-- Some simple JSON wrapper types, to avoid overlapping instances
+
+-- | Strings can be represented a little more efficiently in JSON
+newtype JSONString   = JSONString { fromJSString :: String        }
+    deriving (Eq, Ord, Show, Read)
+
+instance JSON JSONString where
+  readJSON (JSString s) = return s
+  readJSON _            = mkError "Unable to read JSONString"
+  showJSON = JSString
+
+-- | As can association lists
+newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
+    deriving (Eq, Ord, Show, Read)
+
+instance (JSON a) => JSON (JSONObject a) where
+  readJSON (JSObject (JSONObject o)) =
+      let f (x,y) = do y' <- readJSON y; return (x,y')
+       in mapM f o >>= return . JSONObject
+  readJSON _ = mkError "Unable to read JSONObject"
+  showJSON (JSONObject o) = JSObject . JSONObject
+                          $ map (second showJSON) o
+
+
+-- -----------------------------------------------------------------
+-- Instances
+--
+
+instance JSON () where
+  showJSON _ = JSNull
+  readJSON JSNull = return ()
+  readJSON _      = mkError "Unable to read ()"
+
+instance JSON Bool where
+  showJSON = JSBool
+  readJSON (JSBool b) = return b
+  readJSON _          = mkError "Unable to read Bool"
+
+instance JSON Char where
+  showJSON = JSString . JSONString . (:[])
+  readJSON (JSString (JSONString s)) = return $ head s
+  readJSON _                         = mkError "Unable to read Char"
+
+-- -----------------------------------------------------------------
+-- Integral types
+
+instance JSON Integer where
+  showJSON = JSInteger
+  readJSON (JSInteger i) = return i
+  readJSON _             = mkError "Unable to read Integer"
+
+-- constrained:
+instance JSON Int where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Int"
+
+-- constrained:
+instance JSON Word where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Word"
+
+-- -----------------------------------------------------------------
+
+instance JSON Word8 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Word8"
+
+instance JSON Word16 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Word16"
+
+instance JSON Word32 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Word32"
+
+instance JSON Word64 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Word64"
+
+instance JSON Int8 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Int8"
+
+instance JSON Int16 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Int16"
+
+instance JSON Int32 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Int32"
+
+instance JSON Int64 where
+  showJSON = JSInteger . toInteger
+  readJSON (JSInteger i) = return $ fromIntegral i
+  readJSON _             = mkError "Unable to read Int64"
+
+-- -----------------------------------------------------------------
+
+instance JSON Double where
+  showJSON = JSRational
+  readJSON (JSRational d) = return d
+  readJSON _              = mkError "Unable to read Double"
+    -- can't use JSRational here, due to ambiguous '0' parse
+    -- it will parse as Integer.
+
+instance JSON Float where
+  showJSON = JSRational . (realToFrac :: Float -> Double)
+  readJSON (JSRational r) = return $ (realToFrac :: Double -> Float) r
+  readJSON _              = mkError "Unable to read Float"
+
+-- -----------------------------------------------------------------
+-- Products
+instance (JSON a, JSON b) => JSON (a,b) where
+  showJSON (a,b) = JSObject $ JSONObject [ (show (0 :: Int), showJSON a)
+                                         , (show (1 :: Int), showJSON b)
+                                         ]
+  readJSON (JSObject (JSONObject o)) = case o of
+      [("0",a),("1",b)] -> do x <- readJSON a
+                              y <- readJSON b
+                              return (x,y)
+      _                 -> mkError "Unable to read Pair"
+  readJSON _ = mkError "Unable to read Pair"
+
+-- -----------------------------------------------------------------
+-- List-like types
+
+instance JSON a => JSON [a] where
+  showJSON = JSArray . map showJSON
+  readJSON (JSArray as) = mapM readJSON as
+  readJSON _            = mkError "Unable to read List"
