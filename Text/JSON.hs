@@ -516,6 +516,11 @@ instance (JSON a, JSON b) => JSON (a,b) where
 -- -----------------------------------------------------------------
 -- List-like types
 
+instance JSON [Char] where
+  showJSON = JSString . JSONString
+  readJSON (JSString (JSONString s)) = return s
+  readJSON _ = mkError "Unable to read String"
+
 instance JSON a => JSON [a] where
   showJSON = JSArray . map showJSON
   readJSON (JSArray as) = mapM readJSON as
