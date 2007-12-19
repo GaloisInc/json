@@ -57,6 +57,10 @@ import Data.Int
 import Data.Ratio
 import Data.Word
 
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
+import qualified Data.Map as M
+
 import Numeric
 
 
@@ -501,6 +505,29 @@ instance JSON Float where
   readJSON _              = mkError "Unable to read Float"
 
 -- -----------------------------------------------------------------
+-- Sums
+
+instance (JSON a) => JSON (Maybe a) where
+  readJSON (JSObject (JSONObject o)) = case "just" `lookup` o of
+      Just x -> Just <$> readJSON x
+      _      -> case "nothing" `lookup` o of
+          Just JSNull -> return Nothing
+          _           -> mkError "Unable to read Maybe"
+  readJSON _ = mkError "Unable to read Maybe"
+  showJSON (Just x) = JSObject $ JSONObject [("just", showJSON x)]
+  showJSON Nothing  = JSObject $ JSONObject [("nothing", JSNull)]
+
+instance (JSON a, JSON b) => JSON (Either a b) where
+  readJSON (JSObject (JSONObject o)) = case "left" `lookup` o of
+      Just a  -> Left <$> readJSON a
+      Nothing -> case "right" `lookup` o of
+          Just b  -> Right <$> readJSON b
+          Nothing -> mkError "Unable to read Either"
+  readJSON _ = mkError "Unable to read Either"
+  showJSON (Left a)  = JSObject $ JSONObject [("left",  showJSON a)]
+  showJSON (Right b) = JSObject $ JSONObject [("right", showJSON b)]
+
+-- -----------------------------------------------------------------
 -- Products
 instance (JSON a, JSON b) => JSON (a,b) where
   showJSON (a,b) = JSObject $ JSONObject [ (show (0 :: Int), showJSON a)
@@ -512,6 +539,21 @@ instance (JSON a, JSON b) => JSON (a,b) where
                               return (x,y)
       _                 -> mkError "Unable to read Pair"
   readJSON _ = mkError "Unable to read Pair"
+
+instance (JSON a, JSON b, JSON c) => JSON (a,b,c) where
+  showJSON (a,b,c) = JSObject $ JSONObject
+      [ (tag 0, showJSON a)
+      , (tag 1, showJSON b)
+      , (tag 2, showJSON c)
+      ]
+    where tag i = show (i :: Int)
+  readJSON (JSObject (JSONObject o)) = case o of
+      [("0",a),("1",b),("2",c)] -> do x <- readJSON a
+                                      y <- readJSON b
+                                      z <- readJSON c
+                                      return (x,y,z)
+      _                         -> mkError "Unable to read Triple"
+  readJSON _ = mkError "Unable to read Triple"
 
 -- -----------------------------------------------------------------
 -- List-like types
@@ -525,3 +567,11 @@ instance JSON a => JSON [a] where
   showJSON = JSArray . map showJSON
   readJSON (JSArray as) = mapM readJSON as
   readJSON _            = mkError "Unable to read List"
+
+instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
+  showJSON = showJSON . M.toList
+  readJSON a@(JSArray _) = M.fromList <$> readJSON a
+  readJSON _ = mkError "Unable to read Map"
+
+-- -----------------------------------------------------------------
+-- ByteStrings
