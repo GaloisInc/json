@@ -57,8 +57,9 @@ import Data.Int
 import Data.Ratio
 import Data.Word
 
-import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Char8 as S
+import qualified Data.ByteString.Lazy.Char8 as L
+import qualified Data.IntSet as I
 import qualified Data.Map as M
 
 import Numeric
@@ -428,6 +429,15 @@ instance JSON Char where
   readJSON (JSString (JSONString s)) = return $ head s
   readJSON _                         = mkError "Unable to read Char"
 
+instance JSON Ordering where
+  showJSON LT = JSInteger (-1)
+  showJSON EQ = JSInteger 0
+  showJSON GT = JSInteger 1
+  readJSON (JSInteger (-1)) = return LT
+  readJSON (JSInteger 0)    = return EQ
+  readJSON (JSInteger 1)    = return GT
+  readJSON _ = mkError "Unable to read Ordering"
+
 -- -----------------------------------------------------------------
 -- Integral types
 
@@ -573,5 +583,20 @@ instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
   readJSON a@(JSArray _) = M.fromList <$> readJSON a
   readJSON _ = mkError "Unable to read Map"
 
+instance JSON I.IntSet where
+  showJSON = showJSON . I.toList
+  readJSON a@(JSArray _) = I.fromList <$> readJSON a
+  readJSON _ = mkError "Unable to read IntSet"
+
 -- -----------------------------------------------------------------
 -- ByteStrings
+
+instance JSON S.ByteString where
+  showJSON = JSString . JSONString . S.unpack
+  readJSON (JSString (JSONString s)) = return $ S.pack s
+  readJSON _ = mkError "Unable to read ByteString"
+
+instance JSON L.ByteString where
+  showJSON = JSString . JSONString . L.unpack
+  readJSON (JSString (JSONString s)) = return $ L.pack s
+  readJSON _ = mkError "Unable to read ByteString"
