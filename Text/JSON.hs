@@ -42,7 +42,6 @@ module Text.JSON (
 
   ) where
 
-import Control.Applicative
 import Control.Arrow
 import Control.Monad.Error
 import Control.Monad.State
@@ -133,11 +132,9 @@ getInput    = GetJSON get
 setInput   :: String -> GetJSON ()
 setInput x  = GetJSON (put x)
 
+(<$>) :: Functor f => (a -> b) -> f a -> f b
+x <$> y = fmap x y
 
-
-instance Applicative GetJSON where
-    pure  = return
-    (<*>) = ap
 
 -- | Run a JSON reader on an input String, returning some Haskell value
 runGetJSON :: GetJSON a -> String -> Either String a
