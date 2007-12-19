@@ -62,7 +62,7 @@ import Numeric
 
 -- | Convenient error generation
 mkError :: (JSON a) => String -> Either String a
-mkError s = throwError . strMsg $ s
+mkError s = Left s
 
 -- | Decode a JSON String
 decode :: (JSON a) => String -> Either String a
