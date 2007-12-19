@@ -1,5 +1,5 @@
 name:               json
-version:            0.2
+version:            0.3
 synopsis:           Support for serialising Haskell to and from JSON
 description:        .
     JSON (JavaScript Object Notation) is a lightweight data-interchange
@@ -21,14 +21,10 @@ cabal-version:      >= 1.2.0
 flag split-base
 
 library
-  build-depends:     mtl
   if flag(split-base)
-    build-depends:   base >= 3, pretty, array, containers, bytestring
+    build-depends:   base >= 3, array, containers, bytestring
   else
     build-depends:   base < 3
 
-  exposed-modules: Text.JSON
-  ghc-options:     -Wall -O2 -fglasgow-exts -fbang-patterns -fallow-overlapping-instances
---  extensions: GeneralizedNewtypeDeriving,
---              BangPatterns, PatternSignatures,
---              FlexibleContexts, FlexibleInstances, OverlappingInstances
+  exposed-modules: Text.JSON, Text.BasicJSON
+  ghc-options:     -Wall -O2
