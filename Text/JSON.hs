@@ -49,26 +49,39 @@ import Data.List
 import Data.Int
 import Data.Word
 import Data.Either
+import Control.Monad(liftM)
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.IntSet as I
 import qualified Data.Map as M
 
--- | Convenient error generation
-mkError :: (JSON a) => String -> Either String a
-mkError s = Left s
 
 -- | Decode a JSON String
-decode :: (JSON a) => String -> Either String a
-decode s = readJSON =<< runGetJSON readJSType s
+decode :: (JSON a) => String -> Result a
+decode s = case runGetJSON readJSType s of
+             Right a  -> readJSON a
+             Left err -> Error err
 
 encode :: (JSON a) => a -> String
 encode = (flip showJSType [] . showJSON)
 
 class JSON a where
-  readJSON :: JSType -> Either String a
+  readJSON :: JSType -> Result a
   showJSON :: a -> JSType
+
+data Result a = Ok a | Error String
+
+instance Functor Result where fmap = liftM
+instance Monad Result where
+  return x      = Ok x
+  fail x        = Error x
+  Ok a >>= f    = f a
+  Error x >>= _ = Error x
+
+-- | Convenient error generation
+mkError :: (JSON a) => String -> Result a
+mkError s = Error s
 
 --------------------------------------------------------------------
 --
@@ -84,11 +97,6 @@ second f (a,b) = (a, f b)
 
 (<$>) :: (Functor f) => (a -> b) -> f a -> f b
 (<$>) = fmap
-
-instance Monad (Either x) where
-  return = Right
-  Right a >>= f = f a
-  Left e >>= _  = Left e
 
 
 --------------------------------------------------------------------
