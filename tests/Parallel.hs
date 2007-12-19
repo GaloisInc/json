@@ -22,8 +22,8 @@ import Test.QuickCheck
 import Data.List
 import Control.Concurrent (forkIO)
 
-import Control.Concurrent.Chan.Strict
-import Control.Concurrent.MVar.Strict
+import Control.Concurrent.Chan
+import Control.Concurrent.MVar
 
 import Control.Exception  hiding (evaluate)
 import System.Random
