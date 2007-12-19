@@ -1,8 +1,3 @@
-{-# LANGUAGE BangPatterns, PatternSignatures                     #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving                          #-}
-{-# LANGUAGE FlexibleContexts, FlexibleInstances                 #-}
-{-# LANGUAGE OverlappingInstances                                #-}
-
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON
@@ -124,8 +119,21 @@ instance JSON JSType where
 -- | Parsing JSON
 
 -- | The type of JSON parsers for String
-newtype GetJSON a = GetJSON (ErrorT String (State String) a)
-    deriving (Functor, Monad, MonadState String, MonadError String)
+newtype GetJSON a = GetJSON { un :: ErrorT String (State String) a }
+
+instance Functor GetJSON where fmap = liftM
+instance Monad GetJSON where
+  return x        = GetJSON (return x)
+  fail x          = GetJSON (fail x)
+  GetJSON m >>= f = GetJSON (m >>= (un . f))
+
+getInput   :: GetJSON String
+getInput    = GetJSON get
+
+setInput   :: String -> GetJSON ()
+setInput x  = GetJSON (put x)
+
+
 
 instance Applicative GetJSON where
     pure  = return
@@ -142,30 +150,30 @@ context s = take 8 s
 -- | Read the JSON null type
 readJSNull :: GetJSON JSType
 readJSNull = do
-  xs <- get
+  xs <- getInput
   if "null" `isPrefixOf` xs
-        then put (drop 4 xs) >> return JSNull
+        then setInput (drop 4 xs) >> return JSNull
         else fail $ "Unable to parse JSON null: " ++ context xs
 
 -- | Read the JSON Bool type
 readJSBool :: GetJSON JSType
 readJSBool = do
-  xs <- get
+  xs <- getInput
   case () of {_
-      | "true"  `isPrefixOf` xs -> put (drop 4 xs) >> return (JSBool True)
-      | "false" `isPrefixOf` xs -> put (drop 5 xs) >> return (JSBool False)
+      | "true"  `isPrefixOf` xs -> setInput (drop 4 xs) >> return (JSBool True)
+      | "false" `isPrefixOf` xs -> setInput (drop 5 xs) >> return (JSBool False)
       | otherwise               -> fail $ "Unable to parse JSON Bool: " ++ context xs
   }
 
 -- | Read the JSON String type
 readJSString :: GetJSON JSType
 readJSString = do
-  '"' : cs <- get
+  '"' : cs <- getInput
   parse [] cs
 
- where parse !rs cs = case cs of
+ where parse rs cs = rs `seq` case cs of
             '\\' : c : ds -> esc rs c ds
-            '"'  : ds     -> do put ds
+            '"'  : ds     -> do setInput ds
                                 return . JSString . JSONString . reverse $ rs
             c    : ds     -> parse (c:rs) ds
             _             -> fail $ "Unable to parse JSON String: unterminated String: "
@@ -192,20 +200,20 @@ readJSString = do
 -- | Read an Integer in JSON format
 readJSInteger :: GetJSON JSType
 readJSInteger = do
-  cs <- get
+  cs <- getInput
   case cs of
     '-' : ds -> do JSInteger n <- pos ds; return (JSInteger (negate n))
     _        -> pos cs
 
-  where pos ('0':cs)  = put cs >> return (JSInteger 0)
+  where pos ('0':cs)  = setInput cs >> return (JSInteger 0)
         pos cs        = case span isDigit cs of
                           ([],_)  -> fail $ "Unable to parse JSON Integer: " ++ context cs
-                          (xs,ys) -> put ys >> return (JSInteger (read xs))
+                          (xs,ys) -> setInput ys >> return (JSInteger (read xs))
 
 -- | Read an Integer or Double in JSON format, returning a Rational
 readJSRational :: GetJSON Rational
 readJSRational = do
-  cs <- get
+  cs <- getInput
   case cs of
     '-' : ds -> negate <$> pos ds
     _        -> pos cs
@@ -218,7 +226,7 @@ readJSRational = do
         frac n cs = case cs of
             '.' : ds ->
               case span isDigit ds of
-                ([],_) -> put cs >> return n
+                ([],_) -> setInput cs >> return n
                 (as,bs) -> let x = read as :: Integer
                                y = 10 ^ (fromIntegral (length as) :: Integer)
                            in exponent' (n + (x % y)) bs
@@ -226,7 +234,7 @@ readJSRational = do
 
         exponent' n (c:cs)
           | c == 'e' || c == 'E' = (n*) <$> exp_num cs
-        exponent' n cs = put cs >> return n
+        exponent' n cs = setInput cs >> return n
 
         exp_num          :: String -> GetJSON Rational
         exp_num ('+':cs)  = exp_digs cs
@@ -235,7 +243,8 @@ readJSRational = do
 
         exp_digs :: String -> GetJSON Rational
         exp_digs cs = case readDec cs of
-            [(a,ds)] -> put ds >> return (fromIntegral ((10::Integer) ^ (a::Integer)))
+            [(a,ds)] -> do setInput ds
+                           return (fromIntegral ((10::Integer) ^ (a::Integer)))
             _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
 
 -- | Read a list in JSON format
@@ -250,21 +259,21 @@ readJSObject = readAssocs '{' '}' ',' >>= return . JSObject . JSONObject
 -- | Read a sequence of items
 readSequence :: Char -> Char -> Char -> GetJSON [JSType]
 readSequence start end sep = do
-  zs <- get
+  zs <- getInput
   case dropWhile isSpace zs of
     c : cs | c == start ->
         case dropWhile isSpace cs of
-            d : ds | d == end -> put (dropWhile isSpace ds) >> return []
-            ds                -> put ds >> parse []
+            d : ds | d == end -> setInput (dropWhile isSpace ds) >> return []
+            ds                -> setInput ds >> parse []
     _ -> fail $ "Unable to parse JSON sequence: sequence stars with invalid character: " ++ context zs
 
-  where parse !rs = do
+  where parse rs = rs `seq` do
           a  <- readJSType
-          ds <- get
+          ds <- getInput
           case dropWhile isSpace ds of
-            e : es | e == sep -> do put (dropWhile isSpace es)
+            e : es | e == sep -> do setInput (dropWhile isSpace es)
                                     parse (a:rs)
-                   | e == end -> do put (dropWhile isSpace es)
+                   | e == end -> do setInput (dropWhile isSpace es)
                                     return (reverse (a:rs))
             _ -> fail $ "Unable to parse JSON sequence: unterminated sequence: " ++ context ds
 
@@ -272,27 +281,27 @@ readSequence start end sep = do
 -- | Read a sequence of JSON labelled fields
 readAssocs :: Char -> Char -> Char -> GetJSON [(String,JSType)]
 readAssocs start end sep = do
-  zs <- get
+  zs <- getInput
   case dropWhile isSpace zs of
     c:cs | c == start -> case dropWhile isSpace cs of
-            d:ds | d == end -> put (dropWhile isSpace ds) >> return []
-            ds              -> put ds >> parsePairs []
+            d:ds | d == end -> setInput (dropWhile isSpace ds) >> return []
+            ds              -> setInput ds >> parsePairs []
     _ -> fail "Unable to parse JSON object: unterminated sequence"
 
-  where parsePairs !rs = do
+  where parsePairs rs = rs `seq` do
           a  <- do (JSString (JSONString k))  <- readJSString
-                   ds <- get
+                   ds <- getInput
                    case dropWhile isSpace ds of
-                       ':':es -> do put (dropWhile isSpace es)
+                       ':':es -> do setInput (dropWhile isSpace es)
                                     v <- readJSType
                                     return (k,v)
                        _      -> fail $ "Malformed JSON labelled field: " ++ context ds
 
-          ds <- get
+          ds <- getInput
           case dropWhile isSpace ds of
-            e : es | e == sep -> do put (dropWhile isSpace es)
+            e : es | e == sep -> do setInput (dropWhile isSpace es)
                                     parsePairs (a:rs)
-                   | e == end -> do put (dropWhile isSpace es)
+                   | e == end -> do setInput (dropWhile isSpace es)
                                     return (reverse (a:rs))
             _ -> fail $ "Unable to parse JSON object: unterminated sequence: "
                             ++ context ds
@@ -300,7 +309,7 @@ readAssocs start end sep = do
 
 readJSType :: GetJSON JSType
 readJSType = do
-  cs <- get
+  cs <- getInput
   case cs of
     '"' : _ -> readJSString
     '[' : _ -> readJSArray
@@ -567,11 +576,6 @@ instance (JSON a, JSON b, JSON c) => JSON (a,b,c) where
 
 -- -----------------------------------------------------------------
 -- List-like types
-
-instance JSON [Char] where
-  showJSON = JSString . JSONString
-  readJSON (JSString (JSONString s)) = return s
-  readJSON _ = mkError "Unable to read String"
 
 instance JSON a => JSON [a] where
   showJSON = JSArray . map showJSON
