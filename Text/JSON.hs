@@ -6,7 +6,7 @@
 --
 -- Maintainer:  Don Stewart <dons@galois.com>
 -- Stability :  provisional
--- Portability: not portable (FlexibleInstances,NewtypeDeriving,mtl)
+-- Portability: portable
 --
 --------------------------------------------------------------------
 --
@@ -42,13 +42,13 @@ module Text.JSON (
 
   ) where
 
-import Control.Monad.Error
-import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Int
 import Data.Ratio
 import Data.Word
+import Data.Either
+import Control.Monad(liftM)
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -111,25 +111,33 @@ class JSON a where
 --
 instance JSON JSType where
     showJSON = id
-    readJSON = return . id
+    readJSON = return
 
 -- -----------------------------------------------------------------
 -- | Parsing JSON
 
 -- | The type of JSON parsers for String
-newtype GetJSON a = GetJSON { un :: ErrorT String (State String) a }
+newtype GetJSON a = GetJSON { un :: String -> Either String (a,String) }
 
 instance Functor GetJSON where fmap = liftM
 instance Monad GetJSON where
-  return x        = GetJSON (return x)
-  fail x          = GetJSON (fail x)
-  GetJSON m >>= f = GetJSON (m >>= (un . f))
+  return x        = GetJSON (\s -> Right (x,s))
+  fail x          = GetJSON (\_ -> Left x)
+  GetJSON m >>= f = GetJSON (\s -> case m s of
+                                     Left err -> Left err
+                                     Right (a,s1) -> un (f a) s1)
+
+-- Perhaps this should be in Data.Either
+instance Monad (Either x) where
+  return = Right
+  Right a >>= f = f a
+  Left x >>= _  = Left x
 
 getInput   :: GetJSON String
-getInput    = GetJSON get
+getInput    = GetJSON (\s -> Right (s,s))
 
 setInput   :: String -> GetJSON ()
-setInput x  = GetJSON (put x)
+setInput s  = GetJSON (\_ -> Right ((),s))
 
 (<$>) :: Functor f => (a -> b) -> f a -> f b
 x <$> y = fmap x y
@@ -137,10 +145,12 @@ x <$> y = fmap x y
 second :: (a -> b) -> (x,a) -> (x,b)
 second f (a,b) = (a, f b)
 
-
 -- | Run a JSON reader on an input String, returning some Haskell value
 runGetJSON :: GetJSON a -> String -> Either String a
-runGetJSON (GetJSON m) s = evalState (runErrorT m) s
+runGetJSON (GetJSON m) s = case m s of
+                             Left err    -> Left err
+                             Right (a,_) -> Right a
+-------------------------------------------------------------------------
 
 -- | Find 8 chars context, for error messages
 context :: String -> String
