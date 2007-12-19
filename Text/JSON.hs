@@ -42,7 +42,6 @@ module Text.JSON (
 
   ) where
 
-import Control.Arrow
 import Control.Monad.Error
 import Control.Monad.State
 import Data.Char
@@ -134,6 +133,9 @@ setInput x  = GetJSON (put x)
 
 (<$>) :: Functor f => (a -> b) -> f a -> f b
 x <$> y = fmap x y
+
+second :: (a -> b) -> (x,a) -> (x,b)
+second f (a,b) = (a, f b)
 
 
 -- | Run a JSON reader on an input String, returning some Haskell value
