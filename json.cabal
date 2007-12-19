@@ -26,5 +26,6 @@ library
   else
     build-depends:   base < 3
 
-  exposed-modules: Text.JSON, Text.BasicJSON
+  exposed-modules: Text.JSON,
+                   Text.JSON.Base
   ghc-options:     -Wall -O2
