@@ -10,7 +10,7 @@
 --
 --------------------------------------------------------------------
 --
--- Serialising Haskell values to and from JSON encoded Strings.
+-- Serialising Haskell values to and from JSON values.
 --
 
 module Text.JSON (
@@ -26,13 +26,15 @@ module Text.JSON (
   , decode -- :: JSON a => String -> Either String a
 
     -- * Wrapper Types
-  , JSONString(JSONString)
+  , JSONString
+  , toJSString
   , fromJSString
 
-  , JSONObject(JSONObject)
+  , JSONObject
+  , toJSObject
   , fromJSObject
 
-    -- * Low leve parsing
+    -- * Serialization to and from Strings.
     -- ** Reading JSON
   , readJSNull, readJSBool, readJSString, readJSRational
   , readJSArray, readJSObject, readJSType
@@ -51,7 +53,7 @@ import Data.Int
 import Data.Word
 import Data.Either
 import Data.Ratio
-import Control.Monad(liftM)
+import Control.Monad(liftM,ap)
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -69,11 +71,18 @@ encode :: (JSON a) => a -> String
 encode = (flip showJSType [] . showJSON)
 
 class JSON a where
-  readJSON :: JSType -> Result a
-  showJSON :: a -> JSType
+  readJSON  :: JSType -> Result a
+  showJSON  :: a -> JSType
+
+  readJSONs :: JSType -> Result [a]
+  readJSONs (JSArray as) = mapM readJSON as
+  readJSONs _            = mkError "Unable to read list"
+
+  showJSONs :: [a] -> JSType
+  showJSONs = JSArray . map showJSON
 
 data Result a = Ok a | Error String
-  deriving (Show,Eq)
+  deriving (Eq,Show)
 
 instance Functor Result where fmap = liftM
 instance Monad Result where
@@ -111,22 +120,16 @@ instance JSON JSONString where
   showJSON = JSString
 
 instance (JSON a) => JSON (JSONObject a) where
-  readJSON (JSObject (JSONObject o)) =
+  readJSON (JSObject o) =
       let f (x,y) = do y' <- readJSON y; return (x,y')
-       in mapM f o >>= return . JSONObject
+      in toJSObject `fmap` mapM f (fromJSObject o)
   readJSON _ = mkError "Unable to read JSONObject"
-  showJSON (JSONObject o) = JSObject . JSONObject
-                          $ map (second showJSON) o
+  showJSON = JSObject . toJSObject . map (second showJSON) . fromJSObject
 
 
 -- -----------------------------------------------------------------
 -- Instances
 --
-
-instance JSON () where
-  showJSON _ = JSNull
-  readJSON JSNull = return ()
-  readJSON _      = mkError "Unable to read ()"
 
 instance JSON Bool where
   showJSON = JSBool
@@ -134,9 +137,17 @@ instance JSON Bool where
   readJSON _          = mkError "Unable to read Bool"
 
 instance JSON Char where
-  showJSON = JSString . JSONString . (:[])
-  readJSON (JSString (JSONString s)) = return $ head s
-  readJSON _                         = mkError "Unable to read Char"
+  showJSON  = JSString . toJSString . (:[])
+  showJSONs = JSString . toJSString
+
+  readJSON (JSString s) = case fromJSString s of
+                            [c] -> return c
+                            _ -> mkError "Unable to read Char"
+  readJSON _            = mkError "Unable to read Char"
+
+  readJSONs (JSString s)  = return (fromJSString s)
+  readJSONs (JSArray a)   = mapM readJSON a
+  readJSONs _             = mkError "Unable to read String"
 
 instance JSON Ordering where
   showJSON LT = JSRational (-1)
@@ -227,60 +238,65 @@ instance JSON Float where
 -- Sums
 
 instance (JSON a) => JSON (Maybe a) where
-  readJSON (JSObject (JSONObject o)) = case "just" `lookup` o of
+  readJSON (JSObject o) = case "just" `lookup` as of
       Just x -> Just <$> readJSON x
-      _      -> case "nothing" `lookup` o of
+      _      -> case "nothing" `lookup` as of
           Just JSNull -> return Nothing
           _           -> mkError "Unable to read Maybe"
+    where as = fromJSObject o
   readJSON _ = mkError "Unable to read Maybe"
-  showJSON (Just x) = JSObject $ JSONObject [("just", showJSON x)]
-  showJSON Nothing  = JSObject $ JSONObject [("nothing", JSNull)]
+  showJSON (Just x) = JSObject $ toJSObject [("just", showJSON x)]
+  showJSON Nothing  = JSObject $ toJSObject [("nothing", JSNull)]
 
 instance (JSON a, JSON b) => JSON (Either a b) where
-  readJSON (JSObject (JSONObject o)) = case "left" `lookup` o of
+  readJSON (JSObject o) = case "left" `lookup` as of
       Just a  -> Left <$> readJSON a
-      Nothing -> case "right" `lookup` o of
+      Nothing -> case "right" `lookup` as of
           Just b  -> Right <$> readJSON b
           Nothing -> mkError "Unable to read Either"
+    where as = fromJSObject o
   readJSON _ = mkError "Unable to read Either"
-  showJSON (Left a)  = JSObject $ JSONObject [("left",  showJSON a)]
-  showJSON (Right b) = JSObject $ JSONObject [("right", showJSON b)]
+  showJSON (Left a)  = JSObject $ toJSObject [("left",  showJSON a)]
+  showJSON (Right b) = JSObject $ toJSObject [("right", showJSON b)]
 
 -- -----------------------------------------------------------------
 -- Products
+
+instance JSON () where
+  showJSON _ = JSArray []
+  readJSON (JSArray []) = return ()
+  readJSON _      = mkError "Unable to read ()"
+
 instance (JSON a, JSON b) => JSON (a,b) where
-  showJSON (a,b) = JSObject $ JSONObject [ (show (0 :: Int), showJSON a)
-                                         , (show (1 :: Int), showJSON b)
-                                         ]
-  readJSON (JSObject (JSONObject o)) = case o of
-      [("0",a),("1",b)] -> do x <- readJSON a
-                              y <- readJSON b
-                              return (x,y)
-      _                 -> mkError "Unable to read Pair"
+  showJSON (a,b) = JSArray [ showJSON a, showJSON b ]
+  readJSON (JSArray [a,b]) = (,) `fmap` readJSON a `ap` readJSON b
   readJSON _ = mkError "Unable to read Pair"
 
 instance (JSON a, JSON b, JSON c) => JSON (a,b,c) where
-  showJSON (a,b,c) = JSObject $ JSONObject
-      [ (tag 0, showJSON a)
-      , (tag 1, showJSON b)
-      , (tag 2, showJSON c)
-      ]
-    where tag i = show (i :: Int)
-  readJSON (JSObject (JSONObject o)) = case o of
-      [("0",a),("1",b),("2",c)] -> do x <- readJSON a
-                                      y <- readJSON b
-                                      z <- readJSON c
-                                      return (x,y,z)
-      _                         -> mkError "Unable to read Triple"
+  showJSON (a,b,c) = JSArray [ showJSON a, showJSON b, showJSON c ]
+  readJSON (JSArray [a,b,c]) = (,,) `fmap`
+                                  readJSON a `ap`
+                                  readJSON b `ap`
+                                  readJSON c
   readJSON _ = mkError "Unable to read Triple"
+
+instance (JSON a, JSON b, JSON c, JSON d) => JSON (a,b,c,d) where
+  showJSON (a,b,c,d) = JSArray [showJSON a, showJSON b, showJSON c, showJSON d]
+  readJSON (JSArray [a,b,c,d]) = (,,,) `fmap`
+                                  readJSON a `ap`
+                                  readJSON b `ap`
+                                  readJSON c `ap`
+                                  readJSON d
+
+  readJSON _ = mkError "Unable to read 4 tuple"
 
 -- -----------------------------------------------------------------
 -- List-like types
 
+
 instance JSON a => JSON [a] where
-  showJSON = JSArray . map showJSON
-  readJSON (JSArray as) = mapM readJSON as
-  readJSON _            = mkError "Unable to read List"
+  showJSON = showJSONs
+  readJSON = readJSONs
 
 instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
   showJSON = showJSON . M.toList
@@ -296,11 +312,11 @@ instance JSON I.IntSet where
 -- ByteStrings
 
 instance JSON S.ByteString where
-  showJSON = JSString . JSONString . S.unpack
-  readJSON (JSString (JSONString s)) = return $ S.pack s
+  showJSON = JSString . toJSString . S.unpack
+  readJSON (JSString s) = return $ S.pack $ fromJSString s
   readJSON _ = mkError "Unable to read ByteString"
 
 instance JSON L.ByteString where
-  showJSON = JSString . JSONString . L.unpack
-  readJSON (JSString (JSONString s)) = return $ L.pack s
+  showJSON = JSString . toJSString . L.unpack
+  readJSON (JSString s) = return $ L.pack $ fromJSString s
   readJSON _ = mkError "Unable to read ByteString"

@@ -183,6 +183,9 @@ products =
             p (test :: T (Bool,Int,String)
             ))
 
+        ,("(Bool,Int,String,Char)",
+            p (test :: T (Bool,Int,String,Char)
+            ))
 
          ]
 
