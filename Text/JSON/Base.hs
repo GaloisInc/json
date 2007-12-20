@@ -70,12 +70,12 @@ import Numeric
 --
 data JSType
     = JSNull
-    | JSBool     { unJSBool     :: !Bool      }
-    | JSInteger  { unJSInteger  :: !Integer   }
-    | JSRational { unJSRational :: !Double    }
-    | JSArray    { unJSArray    :: [JSType]   }
-    | JSString   { unJSString   :: JSONString }
-    | JSObject   { unJSObject   :: (JSONObject JSType) }
+    | JSBool     !Bool
+    | JSInteger  !Integer
+    | JSRational !Double
+    | JSArray    [JSType]
+    | JSString   JSONString
+    | JSObject   (JSONObject JSType)
     deriving (Show, Read, Eq, Ord)
 
 -- | Strings can be represented a little more efficiently in JSON
