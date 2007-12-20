@@ -50,7 +50,7 @@ import Data.List
 import Data.Int
 import Data.Word
 import Data.Either
-import Control.Monad(liftM)
+import Control.Monad(liftM,ap)
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -121,11 +121,6 @@ instance (JSON a) => JSON (JSONObject a) where
 -- -----------------------------------------------------------------
 -- Instances
 --
-
-instance JSON () where
-  showJSON _ = JSNull
-  readJSON JSNull = return ()
-  readJSON _      = mkError "Unable to read ()"
 
 instance JSON Bool where
   showJSON = JSBool
@@ -247,34 +242,38 @@ instance (JSON a, JSON b) => JSON (Either a b) where
 
 -- -----------------------------------------------------------------
 -- Products
+
+instance JSON () where
+  showJSON _ = JSArray []
+  readJSON (JSArray []) = return ()
+  readJSON _      = mkError "Unable to read ()"
+
 instance (JSON a, JSON b) => JSON (a,b) where
-  showJSON (a,b) = JSObject $ JSONObject [ (show (0 :: Int), showJSON a)
-                                         , (show (1 :: Int), showJSON b)
-                                         ]
-  readJSON (JSObject (JSONObject o)) = case o of
-      [("0",a),("1",b)] -> do x <- readJSON a
-                              y <- readJSON b
-                              return (x,y)
-      _                 -> mkError "Unable to read Pair"
+  showJSON (a,b) = JSArray [ showJSON a, showJSON b ]
+  readJSON (JSArray [a,b]) = (,) `fmap` readJSON a `ap` readJSON b
   readJSON _ = mkError "Unable to read Pair"
 
 instance (JSON a, JSON b, JSON c) => JSON (a,b,c) where
-  showJSON (a,b,c) = JSObject $ JSONObject
-      [ (tag 0, showJSON a)
-      , (tag 1, showJSON b)
-      , (tag 2, showJSON c)
-      ]
-    where tag i = show (i :: Int)
-  readJSON (JSObject (JSONObject o)) = case o of
-      [("0",a),("1",b),("2",c)] -> do x <- readJSON a
-                                      y <- readJSON b
-                                      z <- readJSON c
-                                      return (x,y,z)
-      _                         -> mkError "Unable to read Triple"
+  showJSON (a,b,c) = JSArray [ showJSON a, showJSON b, showJSON c ]
+  readJSON (JSArray [a,b,c]) = (,,) `fmap`
+                                  readJSON a `ap`
+                                  readJSON b `ap`
+                                  readJSON c
+  readJSON _ = mkError "Unable to read Triple"
+
+instance (JSON a, JSON b, JSON c, JSON d) => JSON (a,b,c,d) where
+  showJSON (a,b,c,d) = JSArray [showJSON a, showJSON b, showJSON c, showJSON d]
+  readJSON (JSArray [a,b,c,d]) = (,,,) `fmap`
+                                  readJSON a `ap`
+                                  readJSON b `ap`
+                                  readJSON c `ap`
+                                  readJSON d
+
   readJSON _ = mkError "Unable to read Triple"
 
 -- -----------------------------------------------------------------
 -- List-like types
+
 
 instance JSON a => JSON [a] where
   showJSON = JSArray . map showJSON
