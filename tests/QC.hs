@@ -64,14 +64,14 @@ test _ = forAll (arbitrary :: Gen a) $ \a ->
                 Ok a == decode (encode a)
 
 instance Arbitrary JSONString where
-    arbitrary = liftM JSONString arbitrary
+    arbitrary = liftM toJSString arbitrary
     coarbitrary = undefined
 
 instance (Ord e, Arbitrary e) => Arbitrary (JSONObject e) where
     arbitrary   = do
             ks <- arbitrary
             vs <- arbitrary
-            return . JSONObject . M.toList . M.fromList . zip ks $ vs
+            return . toJSObject . M.toList . M.fromList . zip ks $ vs
 
     coarbitrary = undefined
 
