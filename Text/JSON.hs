@@ -45,14 +45,14 @@ module Text.JSON (
 
   ) where
 
-import Text.JSON.Base
+import Text.JSON.Types
+import Text.JSON.String
 
 import Data.Char
 import Data.List
 import Data.Int
 import Data.Word
 import Data.Either
-import Data.Ratio
 import Control.Monad(liftM,ap)
 
 import qualified Data.ByteString.Char8 as S

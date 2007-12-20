@@ -1,6 +1,6 @@
 --------------------------------------------------------------------
 -- |
--- Module    : Text.JSON.Base
+-- Module    : Text.JSON.StringParser
 -- Copyright : (c) Galois, Inc. 2007
 -- License   : BSD3
 --
@@ -13,22 +13,10 @@
 -- Basic support for working with JSON values.
 --
 
-module Text.JSON.Base (
-    -- * JSON Types
-    JSType(..)
-
-    -- * Wrapper Types
-  , JSONString
-  , toJSString
-  , fromJSString
-
-  , JSONObject
-  , toJSObject
-  , fromJSObject
-
+module Text.JSON.String (
     -- * Parsing
     --
-   , GetJSON, runGetJSON
+     GetJSON, runGetJSON
 
     -- ** Reading JSON
   , readJSNull, readJSBool, readJSString, readJSRational
@@ -40,63 +28,14 @@ module Text.JSON.Base (
 
   ) where
 
+import Text.JSON.Types
+
 import Data.Char
 import Data.List
 import Data.Ratio
 import Data.Either
 import Control.Monad(liftM)
-
 import Numeric
-
-
---
--- | JSON values
---
--- The type to which we encode Haskell values. There's a set
--- of primitives, and a couple of heterogenous collection types.
---
--- Objects:
---
--- An object structure is represented as a pair of curly brackets
--- surrounding zero or more name\/value pairs (or members).  A name is a
--- string.  A single colon comes after each name, separating the name
--- from the value.  A single comma separates a value from a
--- following name.
---
--- Arrays:
---
--- An array structure is represented as square brackets surrounding
--- zero or more values (or elements).  Elements are separated by commas.
---
--- Only valid JSON can be constructed this way
---
-data JSType
-    = JSNull
-    | JSBool     !Bool
-    | JSInteger  !Integer
-    | JSRational !Rational
-    | JSArray    [JSType]
-    | JSString   JSONString
-    | JSObject   (JSONObject JSType)
-    deriving (Show, Read, Eq, Ord)
-
--- | Strings can be represented a little more efficiently in JSON
-newtype JSONString   = JSONString { fromJSString :: String        }
-    deriving (Eq, Ord, Show, Read)
-
--- | Turn a Haskell string into a JSON string.
-toJSString :: String -> JSONString
-toJSString = JSONString
-
--- | As can association lists
-newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
-    deriving (Eq, Ord, Show, Read)
-
--- | Make JSON object out of an association list.
-toJSObject :: [(String,a)] -> JSONObject a
-toJSObject = JSONObject
-
-
 
 
 -- -----------------------------------------------------------------
@@ -161,7 +100,7 @@ readJSString = do
  where parse rs cs = rs `seq` case cs of
             '\\' : c : ds -> esc rs c ds
             '"'  : ds     -> do setInput ds
-                                return . JSString . JSONString . reverse $ rs
+                                return . JSString . toJSString . reverse $ rs
             c    : ds     -> parse (c:rs) ds
             _             -> fail $ "Unable to parse JSON String: unterminated String: "
                                         ++ context cs
@@ -228,7 +167,7 @@ readJSArray  = readSequence '[' ']' ',' >>= return . JSArray
 
 -- | Read an object in JSON format
 readJSObject :: GetJSON JSType
-readJSObject = readAssocs '{' '}' ',' >>= return . JSObject . JSONObject
+readJSObject = readAssocs '{' '}' ',' >>= return . JSObject . toJSObject
 
 
 -- | Read a sequence of items
@@ -264,12 +203,12 @@ readAssocs start end sep = do
     _ -> fail "Unable to parse JSON object: unterminated sequence"
 
   where parsePairs rs = rs `seq` do
-          a  <- do (JSString (JSONString k))  <- readJSString
+          a  <- do (JSString k)  <- readJSString
                    ds <- getInput
                    case dropWhile isSpace ds of
                        ':':es -> do setInput (dropWhile isSpace es)
                                     v <- readJSType
-                                    return (k,v)
+                                    return (fromJSString k,v)
                        _      -> fail $ "Malformed JSON labelled field: " ++ context ds
 
           ds <- getInput
@@ -317,7 +256,7 @@ showJSBool False = showString "false"
 
 -- | Write the JSON String type
 showJSString :: JSONString -> ShowS
-showJSString (JSONString xs) = quote . foldr (.) quote (map sh xs)
+showJSString x = quote . foldr (.) quote (map sh (fromJSString x))
   where
         quote = showChar '"'
         sh c  = case c of
@@ -339,8 +278,10 @@ showJSString (JSONString xs) = quote . foldr (.) quote (map sh xs)
 -- | Show a Rational in JSON format
 showJSRational :: Rational -> ShowS
 showJSRational r | denominator r == 1 = shows $ numerator r
-                 | otherwise = if isInfinite x || isNaN x then showJSNull else shows x
-                     where x = realToFrac r
+                 | otherwise = if isInfinite x || isNaN x then showJSNull
+                                                          else shows x
+                     where x :: Double
+                           x = realToFrac r
 
 -- | Show a list in JSON format
 showJSArray :: [JSType] -> ShowS
@@ -348,7 +289,7 @@ showJSArray = showSequence '[' ']' ','
 
 -- | Show an association list in JSON format
 showJSObject :: JSONObject JSType -> ShowS
-showJSObject (JSONObject o) = showAssocs '{' '}' ',' o
+showJSObject = showAssocs '{' '}' ',' . fromJSObject
 
 -- | Show a generic sequence of pairs in JSON format
 showAssocs :: Char -> Char -> Char -> [(String,JSType)] -> ShowS

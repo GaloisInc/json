@@ -27,5 +27,6 @@ library
     build-depends:   base < 3
 
   exposed-modules: Text.JSON,
-                   Text.JSON.Base
+                   Text.JSON.Types
+                   Text.JSON.String
   ghc-options:     -Wall -O2
