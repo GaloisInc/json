@@ -72,11 +72,16 @@ encode = (flip showJSType [] . showJSON)
 class JSON a where
   readJSON  :: JSType -> Result a
   showJSON  :: a -> JSType
+
+  readJSONs :: JSType -> Result [a]
+  readJSONs (JSArray as) = mapM readJSON as
+  readJSONs _            = mkError "Unable to read list"
+
   showJSONs :: [a] -> JSType
   showJSONs = JSArray . map showJSON
 
 data Result a = Ok a | Error String
-  deriving (Eq)
+  deriving (Eq,Show)
 
 instance Functor Result where fmap = liftM
 instance Monad Result where
@@ -133,10 +138,15 @@ instance JSON Bool where
 instance JSON Char where
   showJSON  = JSString . toJSString . (:[])
   showJSONs = JSString . toJSString
+
   readJSON (JSString s) = case fromJSString s of
                             [c] -> return c
                             _ -> mkError "Unable to read Char"
-  readJSON _                         = mkError "Unable to read Char"
+  readJSON _            = mkError "Unable to read Char"
+
+  readJSONs (JSString s)  = return (fromJSString s)
+  readJSONs (JSArray a)   = mapM readJSON a
+  readJSONs _             = mkError "Unable to read String"
 
 instance JSON Ordering where
   showJSON LT = JSInteger (-1)
@@ -285,8 +295,7 @@ instance (JSON a, JSON b, JSON c, JSON d) => JSON (a,b,c,d) where
 
 instance JSON a => JSON [a] where
   showJSON = showJSONs
-  readJSON (JSArray as) = mapM readJSON as
-  readJSON _            = mkError "Unable to read List"
+  readJSON = readJSONs
 
 instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
   showJSON = showJSON . M.toList
