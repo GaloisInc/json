@@ -68,8 +68,10 @@ encode :: (JSON a) => a -> String
 encode = (flip showJSType [] . showJSON)
 
 class JSON a where
-  readJSON :: JSType -> Result a
-  showJSON :: a -> JSType
+  readJSON  :: JSType -> Result a
+  showJSON  :: a -> JSType
+  showJSONs :: [a] -> JSType
+  showJSONs = JSArray . map showJSON
 
 data Result a = Ok a | Error String
   deriving (Eq)
@@ -128,7 +130,8 @@ instance JSON Bool where
   readJSON _          = mkError "Unable to read Bool"
 
 instance JSON Char where
-  showJSON = JSString . JSONString . (:[])
+  showJSON  = JSString . JSONString . (:[])
+  showJSONs = JSString . JSONString
   readJSON (JSString (JSONString s)) = return $ head s
   readJSON _                         = mkError "Unable to read Char"
 
@@ -276,7 +279,7 @@ instance (JSON a, JSON b, JSON c, JSON d) => JSON (a,b,c,d) where
 
 
 instance JSON a => JSON [a] where
-  showJSON = JSArray . map showJSON
+  showJSON = showJSONs
   readJSON (JSArray as) = mapM readJSON as
   readJSON _            = mkError "Unable to read List"
 
