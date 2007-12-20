@@ -70,6 +70,7 @@ decode s = case runGetJSON readJSType s of
 encode :: (JSON a) => a -> String
 encode = (flip showJSType [] . showJSON)
 
+-- | The class of types serialisable to and from JSON
 class JSON a where
   readJSON  :: JSType -> Result a
   showJSON  :: a -> JSType
@@ -81,6 +82,7 @@ class JSON a where
   showJSONs :: [a] -> JSType
   showJSONs = JSArray . map showJSON
 
+-- | A type for parser results
 data Result a = Ok a | Error String
   deriving (Eq,Show)
 
@@ -109,7 +111,6 @@ second f (a,b) = (a, f b)
 
 (<$>) :: (Functor f) => (a -> b) -> f a -> f b
 (<$>) = fmap
-
 
 --------------------------------------------------------------------
 -- Some simple JSON wrapper types, to avoid overlapping instances
