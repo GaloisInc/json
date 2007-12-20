@@ -34,11 +34,11 @@ module Text.JSON (
 
     -- * Low leve parsing
     -- ** Reading JSON
-  , readJSNull, readJSBool, readJSString, readJSInteger, readJSRational
+  , readJSNull, readJSBool, readJSString, readJSRational
   , readJSArray, readJSObject, readJSType
 
     -- ** Writing JSON
-  , showJSNull, showJSBool, showJSInteger, showJSDouble, showJSArray
+  , showJSNull, showJSBool, showJSRational, showJSArray
   , showJSObject, showJSType
 
   ) where
@@ -50,6 +50,7 @@ import Data.List
 import Data.Int
 import Data.Word
 import Data.Either
+import Data.Ratio
 import Control.Monad(liftM)
 
 import qualified Data.ByteString.Char8 as S
@@ -72,7 +73,7 @@ class JSON a where
   showJSON :: a -> JSType
 
 data Result a = Ok a | Error String
-  deriving (Eq)
+  deriving (Show,Eq)
 
 instance Functor Result where fmap = liftM
 instance Monad Result where
@@ -138,88 +139,88 @@ instance JSON Char where
   readJSON _                         = mkError "Unable to read Char"
 
 instance JSON Ordering where
-  showJSON LT = JSInteger (-1)
-  showJSON EQ = JSInteger 0
-  showJSON GT = JSInteger 1
-  readJSON (JSInteger (-1)) = return LT
-  readJSON (JSInteger 0)    = return EQ
-  readJSON (JSInteger 1)    = return GT
+  showJSON LT = JSRational (-1)
+  showJSON EQ = JSRational 0
+  showJSON GT = JSRational 1
+  readJSON (JSRational (-1)) = return LT
+  readJSON (JSRational 0) = return EQ
+  readJSON (JSRational 1) = return GT
   readJSON _ = mkError "Unable to read Ordering"
 
 -- -----------------------------------------------------------------
 -- Integral types
 
 instance JSON Integer where
-  showJSON = JSInteger
-  readJSON (JSInteger i) = return i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ round i
   readJSON _             = mkError "Unable to read Integer"
 
 -- constrained:
 instance JSON Int where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
-  readJSON _             = mkError "Unable to read Int"
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ round i
+  readJSON _              = mkError "Unable to read Int"
 
 -- constrained:
 instance JSON Word where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . toRational
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Word"
 
 -- -----------------------------------------------------------------
 
 instance JSON Word8 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Word8"
 
 instance JSON Word16 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Word16"
 
 instance JSON Word32 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Word32"
 
 instance JSON Word64 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Word64"
 
 instance JSON Int8 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Int8"
 
 instance JSON Int16 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Int16"
 
 instance JSON Int32 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Int32"
 
 instance JSON Int64 where
-  showJSON = JSInteger . toInteger
-  readJSON (JSInteger i) = return $ fromIntegral i
+  showJSON = JSRational . fromIntegral
+  readJSON (JSRational i) = return $ truncate i
   readJSON _             = mkError "Unable to read Int64"
 
 -- -----------------------------------------------------------------
 
 instance JSON Double where
-  showJSON = JSRational
-  readJSON (JSRational d) = return d
+  showJSON = JSRational . toRational
+  readJSON (JSRational r) = return $ fromRational r
   readJSON _              = mkError "Unable to read Double"
     -- can't use JSRational here, due to ambiguous '0' parse
     -- it will parse as Integer.
 
 instance JSON Float where
-  showJSON = JSRational . (realToFrac :: Float -> Double)
-  readJSON (JSRational r) = return $ (realToFrac :: Double -> Float) r
+  showJSON = JSRational . toRational
+  readJSON (JSRational r) = return $ fromRational r
   readJSON _              = mkError "Unable to read Float"
 
 -- -----------------------------------------------------------------

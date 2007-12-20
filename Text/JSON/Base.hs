@@ -29,11 +29,11 @@ module Text.JSON.Base (
    , GetJSON, runGetJSON
 
     -- ** Reading JSON
-  , readJSNull, readJSBool, readJSString, readJSInteger, readJSRational
+  , readJSNull, readJSBool, readJSString, readJSRational
   , readJSArray, readJSObject, readJSType
 
     -- ** Writing JSON
-  , showJSNull, showJSBool, showJSInteger, showJSDouble, showJSArray
+  , showJSNull, showJSBool, showJSRational, showJSArray
   , showJSObject, showJSType
 
   ) where
@@ -71,8 +71,7 @@ import Numeric
 data JSType
     = JSNull
     | JSBool     { unJSBool     :: !Bool      }
-    | JSInteger  { unJSInteger  :: !Integer   }
-    | JSRational { unJSRational :: !Double    }
+    | JSRational { unJSRational :: !Rational  }
     | JSArray    { unJSArray    :: [JSType]   }
     | JSString   { unJSString   :: JSONString }
     | JSObject   { unJSObject   :: (JSONObject JSType) }
@@ -174,18 +173,6 @@ readJSString = do
                     _ -> fail $ "Unable to parse JSON String: invalid hex: " ++ context cs
           _ ->  fail $ "Unable to parse JSON String: invalid escape char: " ++ show c
 
--- | Read an Integer in JSON format
-readJSInteger :: GetJSON JSType
-readJSInteger = do
-  cs <- getInput
-  case cs of
-    '-' : ds -> do JSInteger n <- pos ds; return (JSInteger (negate n))
-    _        -> pos cs
-
-  where pos ('0':cs)  = setInput cs >> return (JSInteger 0)
-        pos cs        = case span isDigit cs of
-                          ([],_)  -> fail $ "Unable to parse JSON Integer: " ++ context cs
-                          (xs,ys) -> setInput ys >> return (JSInteger (read xs))
 
 -- | Read an Integer or Double in JSON format, returning a Rational
 readJSRational :: GetJSON Rational
@@ -294,9 +281,7 @@ readJSType = do
     't' : _ -> readJSBool
     'f' : _ -> readJSBool
     xs | "null" `isPrefixOf` xs -> readJSNull
-    _ -> do n <- readJSRational
-            return (if denominator n == 1 then JSInteger  (numerator n)
-                                          else JSRational (fromRational n))
+    _ -> JSRational <$> readJSRational
 
 -- -----------------------------------------------------------------
 -- | Writing JSON
@@ -305,8 +290,7 @@ readJSType = do
 showJSType :: JSType -> ShowS
 showJSType (JSNull)       = showJSNull
 showJSType (JSBool b)     = showJSBool b
-showJSType (JSInteger i)  = showJSInteger i
-showJSType (JSRational r) = showJSDouble r
+showJSType (JSRational r) = showJSRational r
 showJSType (JSArray a)    = showJSArray a
 showJSType (JSString s)   = showJSString s
 showJSType (JSObject o)   = showJSObject o
@@ -341,13 +325,11 @@ showJSString (JSONString xs) = quote . foldr (.) quote (map sh xs)
                 (d2,n2) = n1 `divMod` 0x0100
                 (d3,d4) = n2 `divMod` 0x0010
 
--- | Write the JSON Integer type
-showJSInteger :: Integer -> ShowS
-showJSInteger = shows
-
--- | Show a Double in JSON format
-showJSDouble :: Double -> ShowS
-showJSDouble x = if isInfinite x || isNaN x then showJSNull else shows x
+-- | Show a Rational in JSON format
+showJSRational :: Rational -> ShowS
+showJSRational r | denominator r == 1 = shows $ numerator r
+                 | otherwise = if isInfinite x || isNaN x then showJSNull else shows x
+                     where x = realToFrac r
 
 -- | Show a list in JSON format
 showJSArray :: [JSType] -> ShowS
