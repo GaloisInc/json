@@ -22,7 +22,8 @@ module Text.JSON.Base (
   , toJSString
   , fromJSString
 
-  , JSONObject(JSONObject)
+  , JSONObject
+  , toJSObject
   , fromJSObject
 
     -- * Low leve parsing
@@ -89,6 +90,9 @@ toJSString = JSONString
 -- | As can association lists
 newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
     deriving (Eq, Ord, Show, Read)
+
+toJSObject :: [(String,a)] -> JSONObject a
+toJSObject = JSONObject
 
 
 

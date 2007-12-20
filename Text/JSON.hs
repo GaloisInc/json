@@ -30,7 +30,8 @@ module Text.JSON (
   , toJSString
   , fromJSString
 
-  , JSONObject(JSONObject)
+  , JSONObject
+  , toJSObject
   , fromJSObject
 
     -- * Low leve parsing
@@ -113,12 +114,11 @@ instance JSON JSONString where
   showJSON = JSString
 
 instance (JSON a) => JSON (JSONObject a) where
-  readJSON (JSObject (JSONObject o)) =
+  readJSON (JSObject o) =
       let f (x,y) = do y' <- readJSON y; return (x,y')
-       in mapM f o >>= return . JSONObject
+      in toJSObject `fmap` mapM f (fromJSObject o)
   readJSON _ = mkError "Unable to read JSONObject"
-  showJSON (JSONObject o) = JSObject . JSONObject
-                          $ map (second showJSON) o
+  showJSON = JSObject . toJSObject . map (second showJSON) . fromJSObject
 
 
 -- -----------------------------------------------------------------
@@ -227,24 +227,26 @@ instance JSON Float where
 -- Sums
 
 instance (JSON a) => JSON (Maybe a) where
-  readJSON (JSObject (JSONObject o)) = case "just" `lookup` o of
+  readJSON (JSObject o) = case "just" `lookup` as of
       Just x -> Just <$> readJSON x
-      _      -> case "nothing" `lookup` o of
+      _      -> case "nothing" `lookup` as of
           Just JSNull -> return Nothing
           _           -> mkError "Unable to read Maybe"
+    where as = fromJSObject o
   readJSON _ = mkError "Unable to read Maybe"
-  showJSON (Just x) = JSObject $ JSONObject [("just", showJSON x)]
-  showJSON Nothing  = JSObject $ JSONObject [("nothing", JSNull)]
+  showJSON (Just x) = JSObject $ toJSObject [("just", showJSON x)]
+  showJSON Nothing  = JSObject $ toJSObject [("nothing", JSNull)]
 
 instance (JSON a, JSON b) => JSON (Either a b) where
-  readJSON (JSObject (JSONObject o)) = case "left" `lookup` o of
+  readJSON (JSObject o) = case "left" `lookup` as of
       Just a  -> Left <$> readJSON a
-      Nothing -> case "right" `lookup` o of
+      Nothing -> case "right" `lookup` as of
           Just b  -> Right <$> readJSON b
           Nothing -> mkError "Unable to read Either"
+    where as = fromJSObject o
   readJSON _ = mkError "Unable to read Either"
-  showJSON (Left a)  = JSObject $ JSONObject [("left",  showJSON a)]
-  showJSON (Right b) = JSObject $ JSONObject [("right", showJSON b)]
+  showJSON (Left a)  = JSObject $ toJSObject [("left",  showJSON a)]
+  showJSON (Right b) = JSObject $ toJSObject [("right", showJSON b)]
 
 -- -----------------------------------------------------------------
 -- Products
