@@ -26,7 +26,8 @@ module Text.JSON (
   , decode -- :: JSON a => String -> Either String a
 
     -- * Wrapper Types
-  , JSONString(JSONString)
+  , JSONString
+  , toJSString
   , fromJSString
 
   , JSONObject(JSONObject)
@@ -130,9 +131,11 @@ instance JSON Bool where
   readJSON _          = mkError "Unable to read Bool"
 
 instance JSON Char where
-  showJSON  = JSString . JSONString . (:[])
-  showJSONs = JSString . JSONString
-  readJSON (JSString (JSONString s)) = return $ head s
+  showJSON  = JSString . toJSString . (:[])
+  showJSONs = JSString . toJSString
+  readJSON (JSString s) = case fromJSString s of
+                            [c] -> return c
+                            _ -> mkError "Unable to read Char"
   readJSON _                         = mkError "Unable to read Char"
 
 instance JSON Ordering where
@@ -297,11 +300,11 @@ instance JSON I.IntSet where
 -- ByteStrings
 
 instance JSON S.ByteString where
-  showJSON = JSString . JSONString . S.unpack
-  readJSON (JSString (JSONString s)) = return $ S.pack s
+  showJSON = JSString . toJSString . S.unpack
+  readJSON (JSString s) = return $ S.pack $ fromJSString s
   readJSON _ = mkError "Unable to read ByteString"
 
 instance JSON L.ByteString where
-  showJSON = JSString . JSONString . L.unpack
-  readJSON (JSString (JSONString s)) = return $ L.pack s
+  showJSON = JSString . toJSString . L.unpack
+  readJSON (JSString s) = return $ L.pack $ fromJSString s
   readJSON _ = mkError "Unable to read ByteString"

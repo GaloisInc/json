@@ -18,7 +18,8 @@ module Text.JSON.Base (
     JSType(..)
 
     -- * Wrapper Types
-  , JSONString(JSONString)
+  , JSONString
+  , toJSString
   , fromJSString
 
   , JSONObject(JSONObject)
@@ -81,6 +82,9 @@ data JSType
 -- | Strings can be represented a little more efficiently in JSON
 newtype JSONString   = JSONString { fromJSString :: String        }
     deriving (Eq, Ord, Show, Read)
+
+toJSString :: String -> JSONString
+toJSString = JSONString
 
 -- | As can association lists
 newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
