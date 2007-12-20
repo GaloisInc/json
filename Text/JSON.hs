@@ -10,7 +10,7 @@
 --
 --------------------------------------------------------------------
 --
--- Serialising Haskell values to and from JSON encoded Strings.
+-- Serialising Haskell values to and from JSON values.
 --
 
 module Text.JSON (
@@ -34,7 +34,7 @@ module Text.JSON (
   , toJSObject
   , fromJSObject
 
-    -- * Low leve parsing
+    -- * Serialization to and from Strings.
     -- ** Reading JSON
   , readJSNull, readJSBool, readJSString, readJSInteger, readJSRational
   , readJSArray, readJSObject, readJSType

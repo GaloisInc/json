@@ -10,7 +10,7 @@
 --
 --------------------------------------------------------------------
 --
--- Serialising Haskell values to and from JSON encoded Strings.
+-- Basic support for working with JSON values.
 --
 
 module Text.JSON.Base (
@@ -26,7 +26,7 @@ module Text.JSON.Base (
   , toJSObject
   , fromJSObject
 
-    -- * Low leve parsing
+    -- * Parsing
     --
    , GetJSON, runGetJSON
 
@@ -53,15 +53,15 @@ import Numeric
 -- | JSON values
 --
 -- The type to which we encode Haskell values. There's a set
--- of primitives, and a couple of heterogenous collection types
--- 
+-- of primitives, and a couple of heterogenous collection types.
+--
 -- Objects:
 --
 -- An object structure is represented as a pair of curly brackets
--- surrounding zero or more name/value pairs (or members).  A name is a
+-- surrounding zero or more name\/value pairs (or members).  A name is a
 -- string.  A single colon comes after each name, separating the name
 -- from the value.  A single comma separates a value from a
--- following name. 
+-- following name.
 --
 -- Arrays:
 --
@@ -84,6 +84,7 @@ data JSType
 newtype JSONString   = JSONString { fromJSString :: String        }
     deriving (Eq, Ord, Show, Read)
 
+-- | Turn a Haskell string into a JSON string.
 toJSString :: String -> JSONString
 toJSString = JSONString
 
@@ -91,6 +92,7 @@ toJSString = JSONString
 newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
     deriving (Eq, Ord, Show, Read)
 
+-- | Make JSON object out of an association list.
 toJSObject :: [(String,a)] -> JSONObject a
 toJSObject = JSONObject
 
