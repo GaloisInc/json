@@ -269,7 +269,7 @@ instance (JSON a, JSON b, JSON c, JSON d) => JSON (a,b,c,d) where
                                   readJSON c `ap`
                                   readJSON d
 
-  readJSON _ = mkError "Unable to read Triple"
+  readJSON _ = mkError "Unable to read 4 tuple"
 
 -- -----------------------------------------------------------------
 -- List-like types
