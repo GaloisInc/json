@@ -21,6 +21,7 @@ module Text.JSON (
   , JSON(..)
 
     -- * Encoding and Decoding
+  , Result(..)
   , encode -- :: JSON a => a -> String
   , decode -- :: JSON a => String -> Either String a
 
@@ -71,6 +72,7 @@ class JSON a where
   showJSON :: a -> JSType
 
 data Result a = Ok a | Error String
+  deriving (Eq)
 
 instance Functor Result where fmap = liftM
 instance Monad Result where

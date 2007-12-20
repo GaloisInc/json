@@ -61,7 +61,7 @@ p = pNon
 
 test :: forall a. (Show a,Arbitrary a, Eq a, JSON a) => a -> Property
 test _ = forAll (arbitrary :: Gen a) $ \a ->
-                Right a == decode (encode a)
+                Ok a == decode (encode a)
 
 instance Arbitrary JSONString where
     arbitrary = liftM JSONString arbitrary
