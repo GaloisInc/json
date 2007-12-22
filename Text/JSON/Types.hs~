@@ -58,6 +58,7 @@ data JSType
     | JSBool     !Bool
     | JSRational !Rational
     | JSString   JSONString
+
     | JSArray    [JSType]
     | JSObject   (JSONObject JSType)
     deriving (Show, Read, Eq, Ord)

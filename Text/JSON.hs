@@ -24,6 +24,8 @@ module Text.JSON (
   , Result(..)
   , encode -- :: JSON a => a -> String
   , decode -- :: JSON a => String -> Either String a
+  , encodeStrict -- :: JSON a => a -> String
+  , decodeStrict -- :: JSON a => String -> Either String a
 
     -- * Wrapper Types
   , JSONString
@@ -60,15 +62,45 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.IntSet as I
 import qualified Data.Map as M
 
+------------------------------------------------------------------------
 
--- | Decode a JSON String
+-- | Decode a String representing a JSON value 
+-- (either an object, array, bool, number, null)
+--
+-- This is a superset of JSON, as types other than
+-- Array and Object are allowed at the top level.
+--
 decode :: (JSON a) => String -> Result a
 decode s = case runGetJSON readJSType s of
              Right a  -> readJSON a
              Left err -> Error err
 
+-- | Encode a Haskell value into a string, in JSON format.
+--
+-- This is a superset of JSON, as types other than
+-- Array and Object are allowed at the top level.
+--
 encode :: (JSON a) => a -> String
 encode = (flip showJSType [] . showJSON)
+
+------------------------------------------------------------------------
+
+-- | Decode a String representing a strict JSON value.
+-- This follows the spec, and requires top level
+-- JSON types to be an Array or Object.
+decodeStrict :: (JSON a) => String -> Result a
+decodeStrict s = case runGetJSON readJSTopType s of
+     Right a  -> readJSON a
+     Left err -> Error err
+
+-- | Encode a value as a String in strict JSON format.
+-- This follows the spec, and requires all values
+-- at the top level to be wrapped in either an Array or Object.
+-- JSON types to be an Array or Object.
+encodeStrict :: (JSON a) => a -> String
+encodeStrict = (flip showJSTopType [] . showJSON)
+
+------------------------------------------------------------------------
 
 -- | The class of types serialisable to and from JSON
 class JSON a where
