@@ -56,11 +56,14 @@ instance Monad GetJSON where
                                      Left err -> Left err
                                      Right (a,s1) -> un (f a) s1)
 
--- | Run a JSON reader on an input String, returning some Haskell value
+-- | Run a JSON reader on an input String, returning some Haskell value.
+-- All input will be consumed.
 runGetJSON :: GetJSON a -> String -> Either String a
 runGetJSON (GetJSON m) s = case m s of
-                             Left err    -> Left err
-                             Right (a,_) -> Right a
+     Left err    -> Left err
+     Right (a,t) -> case t of
+                        [] -> Right a
+                        _  -> Left $ "Invalid tokens at end of JSON string: "++ show (take 10 t)
 
 getInput   :: GetJSON String
 getInput    = GetJSON (\s -> Right (s,s))
@@ -98,16 +101,21 @@ readJSBool = do
 -- | Read the JSON String type
 readJSString :: GetJSON JSType
 readJSString = do
-  '"' : cs <- getInput
-  parse [] cs
+  x <- getInput
+  case x of
+       '"' : cs -> parse [] cs
+       _        -> fail $ "Malformed JSON: expecting string: " ++ context x
 
  where parse rs cs = rs `seq` case cs of
             '\\' : c : ds -> esc rs c ds
             '"'  : ds     -> do setInput ds
                                 return . JSString . toJSString . reverse $ rs
-            c    : ds     -> parse (c:rs) ds
-            _             -> fail $ "Unable to parse JSON String: unterminated String: "
-                                        ++ context cs
+            c    : ds
+                |  (c `elem` (['\x20'..'\x21'] ++ ['\x23'..'\x5B'])) || (c >='\x5D' && c <= '\x10FFFF')
+                          -> parse (c:rs) ds
+                | otherwise
+                          -> fail $ "Illegal unescaped character in string: " ++ context cs
+            _             -> fail $ "Unable to parse JSON String: unterminated String: " ++ context cs
 
        esc rs c cs = case c of
           '\\' -> parse ('\\' : rs) cs
@@ -193,7 +201,7 @@ readSequence start end sep = do
                                     parse (a:rs)
                    | e == end -> do setInput (dropWhile isSpace es)
                                     return (reverse (a:rs))
-            _ -> fail $ "Unable to parse JSON sequence: unterminated sequence: " ++ context ds
+            _ -> fail $ "Unable to parse JSON array: unterminated array: " ++ context ds
 
 
 -- | Read a sequence of JSON labelled fields
@@ -204,10 +212,12 @@ readAssocs start end sep = do
     c:cs | c == start -> case dropWhile isSpace cs of
             d:ds | d == end -> setInput (dropWhile isSpace ds) >> return []
             ds              -> setInput ds >> parsePairs []
-    _ -> fail "Unable to parse JSON object: unterminated sequence"
+    _ -> fail "Unable to parse JSON object: unterminated object"
 
   where parsePairs rs = rs `seq` do
-          a  <- do (JSString k)  <- readJSString
+          a  <- do k  <- do x <- readJSString ; case x of
+                                JSString s -> return s
+                                _          -> fail $ "Malformed JSON field labels: object keys must be quoted strings."
                    ds <- getInput
                    case dropWhile isSpace ds of
                        ':':es -> do setInput (dropWhile isSpace es)
@@ -234,8 +244,10 @@ readJSType = do
     '{' : _ -> readJSObject
     't' : _ -> readJSBool
     'f' : _ -> readJSBool
-    xs | "null" `isPrefixOf` xs -> readJSNull
-    _ -> JSRational <$> readJSRational
+    xs    | "null" `isPrefixOf` xs -> readJSNull
+    (x:_) | x == '-' || isDigit x  -> JSRational <$> readJSRational
+
+    xs -> fail $ "Malformed JSON: invalid token in this context " ++ context xs
 
 -- | Top level JSON can only be Arrays or Objects
 readJSTopType :: GetJSON JSType
