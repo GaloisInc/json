@@ -1,3 +1,15 @@
+--------------------------------------------------------------------
+-- |
+-- Module    : 
+-- Copyright : (c) Galois, Inc. 2008
+-- License   : BSD3
+--
+-- Maintainer: Don Stewart <dons@galois.com>
+-- Stability : provisional
+-- Portability:
+--
+-- An example parsec-based parser for JSON
+
 module Text.JSON.Parsec
   ( p_value
   , p_null

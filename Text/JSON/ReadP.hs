@@ -1,3 +1,15 @@
+--------------------------------------------------------------------
+-- |
+-- Module    : 
+-- Copyright : (c) Galois, Inc. 2008
+-- License   : BSD3
+--
+-- Maintainer: Don Stewart <dons@galois.com>
+-- Stability : provisional
+-- Portability:
+--
+-- An example readp parser for JSON
+
 module Text.JSON.ReadP
   ( p_value
   , p_null
