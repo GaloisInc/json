@@ -1,16 +1,19 @@
 --------------------------------------------------------------------
 -- |
--- Module    : 
--- Copyright : (c) Galois, Inc. 2008
+-- Module    : Text.JSON.Pretty
+-- Copyright : (c) Galois, Inc. 2007
 -- License   : BSD3
 --
--- Maintainer: Don Stewart <dons@galois.com>
--- Stability : provisional
--- Portability:
+-- Maintainer:  Don Stewart <dons@galois.com>
+-- Stability :  provisional
+-- Portability: portable
 --
--- An example pretty printer for JSON
+-- Display JSON values using pretty printing combinators.
 
-module Text.JSON.Pretty where
+module Text.JSON.Pretty
+  ( module Text.JSON.Pretty
+  , module Text.PrettyPrint.HughesPJ
+  ) where
 
 import Text.JSON.Types
 import Text.PrettyPrint.HughesPJ
@@ -18,7 +21,7 @@ import Data.Ratio
 import Data.Char
 import Numeric
 
-pp_value         :: JSType -> Doc
+pp_value         :: JSValue -> Doc
 pp_value v        = case v of
     JSNull       -> pp_null
     JSBool x     -> pp_boolean x
@@ -38,7 +41,7 @@ pp_number        :: Rational -> Doc
 pp_number x | denominator x == 1  = integer (numerator x)
 pp_number x                       = double (fromRational x)
 
-pp_array         :: [JSType] -> Doc
+pp_array         :: [JSValue] -> Doc
 pp_array xs       = brackets $ fsep $ punctuate comma $ map pp_value xs
 
 pp_string        :: String -> Doc
@@ -54,13 +57,13 @@ pp_string x       = doubleQuotes $ hcat $ map pp_char x
                   | otherwise = cs
           where len = length cs
 
-pp_object        :: [(String,JSType)] -> Doc
+pp_object        :: [(String,JSValue)] -> Doc
 pp_object xs      = braces $ fsep $ punctuate comma $ map pp_field xs
   where pp_field (k,v) = pp_string k <> colon <+> pp_value v
 
-pp_js_string     :: JSONString -> Doc
+pp_js_string     :: JSString -> Doc
 pp_js_string x    = pp_string (fromJSString x)
 
-pp_js_object     :: JSONObject JSType -> Doc
+pp_js_object     :: JSObject JSValue -> Doc
 pp_js_object x    = pp_object (fromJSObject x)
 

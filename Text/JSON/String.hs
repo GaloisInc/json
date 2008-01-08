@@ -1,6 +1,6 @@
 --------------------------------------------------------------------
 -- |
--- Module    : Text.JSON.StringParser
+-- Module    : Text.JSON.String
 -- Copyright : (c) Galois, Inc. 2007
 -- License   : BSD3
 --
@@ -22,13 +22,13 @@ module Text.JSON.String (
   , readJSNull, readJSBool, readJSString, readJSRational
   , readJSArray, readJSObject
 
-  , readJSType, readJSTopType
+  , readJSValue, readJSTopType
 
     -- ** Writing JSON
   , showJSNull, showJSBool, showJSRational, showJSArray
   , showJSObject
 
-  , showJSType, showJSTopType
+  , showJSValue, showJSTopType
 
   ) where
 
@@ -81,7 +81,7 @@ context :: String -> String
 context s = take 8 s
 
 -- | Read the JSON null type
-readJSNull :: GetJSON JSType
+readJSNull :: GetJSON JSValue
 readJSNull = do
   xs <- getInput
   if "null" `isPrefixOf` xs
@@ -89,7 +89,7 @@ readJSNull = do
         else fail $ "Unable to parse JSON null: " ++ context xs
 
 -- | Read the JSON Bool type
-readJSBool :: GetJSON JSType
+readJSBool :: GetJSON JSValue
 readJSBool = do
   xs <- getInput
   case () of {_
@@ -99,7 +99,7 @@ readJSBool = do
   }
 
 -- | Read the JSON String type
-readJSString :: GetJSON JSType
+readJSString :: GetJSON JSValue
 readJSString = do
   x <- getInput
   case x of
@@ -174,16 +174,16 @@ readJSRational = do
             _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
 
 -- | Read a list in JSON format
-readJSArray  :: GetJSON JSType
+readJSArray  :: GetJSON JSValue
 readJSArray  = readSequence '[' ']' ',' >>= return . JSArray
 
 -- | Read an object in JSON format
-readJSObject :: GetJSON JSType
+readJSObject :: GetJSON JSValue
 readJSObject = readAssocs '{' '}' ',' >>= return . JSObject . toJSObject
 
 
 -- | Read a sequence of items
-readSequence :: Char -> Char -> Char -> GetJSON [JSType]
+readSequence :: Char -> Char -> Char -> GetJSON [JSValue]
 readSequence start end sep = do
   zs <- getInput
   case dropWhile isSpace zs of
@@ -194,7 +194,7 @@ readSequence start end sep = do
     _ -> fail $ "Unable to parse JSON sequence: sequence stars with invalid character: " ++ context zs
 
   where parse rs = rs `seq` do
-          a  <- readJSType
+          a  <- readJSValue
           ds <- getInput
           case dropWhile isSpace ds of
             e : es | e == sep -> do setInput (dropWhile isSpace es)
@@ -205,7 +205,7 @@ readSequence start end sep = do
 
 
 -- | Read a sequence of JSON labelled fields
-readAssocs :: Char -> Char -> Char -> GetJSON [(String,JSType)]
+readAssocs :: Char -> Char -> Char -> GetJSON [(String,JSValue)]
 readAssocs start end sep = do
   zs <- getInput
   case dropWhile isSpace zs of
@@ -221,7 +221,7 @@ readAssocs start end sep = do
                    ds <- getInput
                    case dropWhile isSpace ds of
                        ':':es -> do setInput (dropWhile isSpace es)
-                                    v <- readJSType
+                                    v <- readJSValue
                                     return (fromJSString k,v)
                        _      -> fail $ "Malformed JSON labelled field: " ++ context ds
 
@@ -235,8 +235,8 @@ readAssocs start end sep = do
                             ++ context ds
 
 -- | Read one of several possible JS types
-readJSType :: GetJSON JSType
-readJSType = do
+readJSValue :: GetJSON JSValue
+readJSValue = do
   cs <- getInput
   case cs of
     '"' : _ -> readJSString
@@ -250,7 +250,7 @@ readJSType = do
     xs -> fail $ "Malformed JSON: invalid token in this context " ++ context xs
 
 -- | Top level JSON can only be Arrays or Objects
-readJSTopType :: GetJSON JSType
+readJSTopType :: GetJSON JSValue
 readJSTopType = do
   cs <- getInput
   case cs of
@@ -263,19 +263,19 @@ readJSTopType = do
 
 -- | Show strict JSON top level types. Values not permitted
 -- at the top level are wrapped in a singleton array.
-showJSTopType :: JSType -> ShowS
+showJSTopType :: JSValue -> ShowS
 showJSTopType (JSArray a)    = showJSArray a
 showJSTopType (JSObject o)   = showJSObject o
 showJSTopType x              = showJSTopType $ JSArray [x]
 
 -- | Show JSON values
-showJSType :: JSType -> ShowS
-showJSType (JSNull)       = showJSNull
-showJSType (JSBool b)     = showJSBool b
-showJSType (JSRational r) = showJSRational r
-showJSType (JSArray a)    = showJSArray a
-showJSType (JSString s)   = showJSString s
-showJSType (JSObject o)   = showJSObject o
+showJSValue :: JSValue -> ShowS
+showJSValue (JSNull)       = showJSNull
+showJSValue (JSBool b)     = showJSBool b
+showJSValue (JSRational r) = showJSRational r
+showJSValue (JSArray a)    = showJSArray a
+showJSValue (JSString s)   = showJSString s
+showJSValue (JSObject o)   = showJSObject o
 
 -- | Write the JSON null type
 showJSNull :: ShowS
@@ -287,7 +287,7 @@ showJSBool True  = showString "true"
 showJSBool False = showString "false"
 
 -- | Write the JSON String type
-showJSString :: JSONString -> ShowS
+showJSString :: JSString -> ShowS
 showJSString x = quote . foldr (.) quote (map sh (fromJSString x))
   where
         quote = showChar '"'
@@ -316,23 +316,23 @@ showJSRational r | denominator r == 1 = shows $ numerator r
                            x = realToFrac r
 
 -- | Show a list in JSON format
-showJSArray :: [JSType] -> ShowS
+showJSArray :: [JSValue] -> ShowS
 showJSArray = showSequence '[' ']' ','
 
 -- | Show an association list in JSON format
-showJSObject :: JSONObject JSType -> ShowS
+showJSObject :: JSObject JSValue -> ShowS
 showJSObject = showAssocs '{' '}' ',' . fromJSObject
 
 -- | Show a generic sequence of pairs in JSON format
-showAssocs :: Char -> Char -> Char -> [(String,JSType)] -> ShowS
+showAssocs :: Char -> Char -> Char -> [(String,JSValue)] -> ShowS
 showAssocs start end sep xs rest = (start:[])
     ++ concat (intersperse (sep:[]) $ map mkRecord xs)
     ++ (end:[]) ++ rest
-  where mkRecord (k,v) = show k ++ ":" ++ showJSType v []
+  where mkRecord (k,v) = show k ++ ":" ++ showJSValue v []
 
 -- | Show a generic sequence in JSON format
-showSequence :: Char -> Char -> Char -> [JSType] -> ShowS
+showSequence :: Char -> Char -> Char -> [JSValue] -> ShowS
 showSequence start end sep xs rest = (start:[])
-  ++ concat (intersperse (sep:[]) $ map (flip showJSType []) xs)
+  ++ concat (intersperse (sep:[]) $ map (flip showJSValue []) xs)
   ++ (end:[]) ++ rest
 

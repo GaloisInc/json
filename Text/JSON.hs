@@ -15,9 +15,9 @@
 
 module Text.JSON (
     -- * JSON Types
-    JSType(..)
+    JSValue(..)
 
-    -- * Serialization to and from JSTypes
+    -- * Serialization to and from JSValues
   , JSON(..)
 
     -- * Encoding and Decoding
@@ -28,22 +28,22 @@ module Text.JSON (
   , decodeStrict -- :: JSON a => String -> Either String a
 
     -- * Wrapper Types
-  , JSONString
+  , JSString
   , toJSString
   , fromJSString
 
-  , JSONObject
+  , JSObject
   , toJSObject
   , fromJSObject
 
     -- * Serialization to and from Strings.
     -- ** Reading JSON
   , readJSNull, readJSBool, readJSString, readJSRational
-  , readJSArray, readJSObject, readJSType
+  , readJSArray, readJSObject, readJSValue
 
     -- ** Writing JSON
   , showJSNull, showJSBool, showJSRational, showJSArray
-  , showJSObject, showJSType
+  , showJSObject, showJSValue
 
   ) where
 
@@ -71,7 +71,7 @@ import qualified Data.Map as M
 -- Array and Object are allowed at the top level.
 --
 decode :: (JSON a) => String -> Result a
-decode s = case runGetJSON readJSType s of
+decode s = case runGetJSON readJSValue s of
              Right a  -> readJSON a
              Left err -> Error err
 
@@ -81,7 +81,7 @@ decode s = case runGetJSON readJSType s of
 -- Array and Object are allowed at the top level.
 --
 encode :: (JSON a) => a -> String
-encode = (flip showJSType [] . showJSON)
+encode = (flip showJSValue [] . showJSON)
 
 ------------------------------------------------------------------------
 
@@ -104,14 +104,14 @@ encodeStrict = (flip showJSTopType [] . showJSON)
 
 -- | The class of types serialisable to and from JSON
 class JSON a where
-  readJSON  :: JSType -> Result a
-  showJSON  :: a -> JSType
+  readJSON  :: JSValue -> Result a
+  showJSON  :: a -> JSValue
 
-  readJSONs :: JSType -> Result [a]
+  readJSONs :: JSValue -> Result [a]
   readJSONs (JSArray as) = mapM readJSON as
   readJSONs _            = mkError "Unable to read list"
 
-  showJSONs :: [a] -> JSType
+  showJSONs :: [a] -> JSValue
   showJSONs = JSArray . map showJSON
 
 -- | A type for parser results
@@ -131,10 +131,10 @@ mkError s = Error s
 
 --------------------------------------------------------------------
 --
--- | To ensure we generate valid JSON, we map Haskell types to JSType
+-- | To ensure we generate valid JSON, we map Haskell types to JSValue
 -- internally, then pretty print that.
 --
-instance JSON JSType where
+instance JSON JSValue where
     showJSON = id
     readJSON = return
 
@@ -147,16 +147,16 @@ second f (a,b) = (a, f b)
 --------------------------------------------------------------------
 -- Some simple JSON wrapper types, to avoid overlapping instances
 
-instance JSON JSONString where
+instance JSON JSString where
   readJSON (JSString s) = return s
-  readJSON _            = mkError "Unable to read JSONString"
+  readJSON _            = mkError "Unable to read JSString"
   showJSON = JSString
 
-instance (JSON a) => JSON (JSONObject a) where
+instance (JSON a) => JSON (JSObject a) where
   readJSON (JSObject o) =
       let f (x,y) = do y' <- readJSON y; return (x,y')
       in toJSObject `fmap` mapM f (fromJSObject o)
-  readJSON _ = mkError "Unable to read JSONObject"
+  readJSON _ = mkError "Unable to read JSObject"
   showJSON = JSObject . toJSObject . map (second showJSON) . fromJSObject
 
 

@@ -1,14 +1,14 @@
 --------------------------------------------------------------------
 -- |
--- Module    : 
--- Copyright : (c) Galois, Inc. 2008
+-- Module    : Text.JSON.ReadP
+-- Copyright : (c) Galois, Inc. 2007
 -- License   : BSD3
 --
--- Maintainer: Don Stewart <dons@galois.com>
--- Stability : provisional
--- Portability:
+-- Maintainer:  Don Stewart <dons@galois.com>
+-- Stability :  provisional
+-- Portability: portable
 --
--- An example readp parser for JSON
+-- Parse JSON values using the ReadP combinators.
 
 module Text.JSON.ReadP
   ( p_value
@@ -32,7 +32,7 @@ import Numeric
 token            :: ReadP a -> ReadP a
 token p           = skipSpaces *> p
 
-p_value          :: ReadP JSType
+p_value          :: ReadP JSValue
 p_value           =  (JSNull      <$  p_null)
                  <|> (JSBool      <$> p_boolean)
                  <|> (JSArray     <$> p_array)
@@ -49,7 +49,7 @@ p_boolean         = token
                      <|> (False <$ string "false")
                       )
 
-p_array          :: ReadP [JSType]
+p_array          :: ReadP [JSValue]
 p_array           = between (token (char '[')) (token (char ']'))
                   $ p_value `sepBy` token (char ',')
 
@@ -74,7 +74,7 @@ p_string          = between (token (char '"')) (char '"') (many p_char)
                   where code      = fst $ head $ readHex x
                         max_char  = fromEnum (maxBound :: Char)
 
-p_object         :: ReadP [(String,JSType)]
+p_object         :: ReadP [(String,JSValue)]
 p_object          = between (token (char '{')) (token (char '}'))
                   $ p_field `sepBy` token (char ',')
   where p_field   = (,) <$> (p_string <* token (char ':')) <*> p_value
@@ -82,10 +82,10 @@ p_object          = between (token (char '{')) (token (char '}'))
 p_number         :: ReadP Rational
 p_number          = readS_to_P (readSigned readFloat)
 
-p_js_string      :: ReadP JSONString
+p_js_string      :: ReadP JSString
 p_js_string       = toJSString <$> p_string
 
-p_js_object      :: ReadP (JSONObject JSType)
+p_js_object      :: ReadP (JSObject JSValue)
 p_js_object       = toJSObject <$> p_object
 
 --------------------------------------------------------------------------------

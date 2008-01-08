@@ -63,11 +63,11 @@ test :: forall a. (Show a,Arbitrary a, Eq a, JSON a) => a -> Property
 test _ = forAll (arbitrary :: Gen a) $ \a ->
                 Ok a == decode (encode a)
 
-instance Arbitrary JSONString where
+instance Arbitrary JSString where
     arbitrary = liftM toJSString arbitrary
     coarbitrary = undefined
 
-instance (Ord e, Arbitrary e) => Arbitrary (JSONObject e) where
+instance (Ord e, Arbitrary e) => Arbitrary (JSObject e) where
     arbitrary   = do
             ks <- arbitrary
             vs <- arbitrary
@@ -89,7 +89,7 @@ basics = ("Basic types",
 atomicCharacterTypes =
     ("Atomic string types",
 
-    [("String",      p (test :: T JSONString  ))
+    [("String",      p (test :: T JSString  ))
     ,("Strict ByteString",       p (test :: T S.ByteString ))
     ,("Lazy ByteString",         p (test :: T L.ByteString ))
     ,("Char",        p (test :: T Char ))

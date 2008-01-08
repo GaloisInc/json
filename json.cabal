@@ -1,12 +1,12 @@
 name:               json
-version:            0.3.1
+version:            0.3.2
 synopsis:           Support for serialising Haskell to and from JSON
 description:
     JSON (JavaScript Object Notation) is a lightweight data-interchange
     format. It is easy for humans to read and write. It is easy for
     machines to parse and generate.  It is based on a subset of the
     JavaScript Programming Language, Standard ECMA-262 3rd Edition -
-    December 1999.  
+    December 1999.
     .
     This library provides a parser and pretty printer for converting
     between Haskell values and JSON.
@@ -19,14 +19,33 @@ Copyright:          (c) 2007 Galois Inc.
 cabal-version:      >= 1.2.0
 
 flag split-base
+  default: True
+  description: Use the new split base package.
+flag parsec
+  default: True
+  description: Add support for parsing with Parsec.
+flag pretty
+  default: True
+  description: Add support for using pretty printing combinators.
 
 library
+  exposed-modules: Text.JSON,
+                   Text.JSON.Types,
+                   Text.JSON.String,
+                   Text.JSON.ReadP
+  ghc-options:     -Wall -O2
+
   if flag(split-base)
     build-depends:   base >= 3, array, containers, bytestring
+    if flag(parsec)
+      build-depends:    parsec
+      exposed-modules:  Text.JSON.Parsec
+    if flag(pretty)
+      build-depends:    pretty
+      exposed-modules:  Text.JSON.Pretty
   else
-    build-depends:   base < 3
+    build-depends:    base < 3
+    exposed-modules:  Text.JSON.Parsec, Text.JSON.Pretty
 
-  exposed-modules: Text.JSON,
-                   Text.JSON.Types
-                   Text.JSON.String
-  ghc-options:     -Wall -O2
+
+

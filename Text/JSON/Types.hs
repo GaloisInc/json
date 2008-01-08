@@ -16,14 +16,14 @@
 module Text.JSON.Types (
 
     -- * JSON Types
-    JSType(..)
+    JSValue(..)
 
     -- * Wrapper Types
-  , JSONString
+  , JSString
   , toJSString
   , fromJSString
 
-  , JSONObject
+  , JSObject
   , toJSObject
   , fromJSObject
 
@@ -53,29 +53,29 @@ import Data.Ratio
 --
 -- Only valid JSON can be constructed this way
 --
-data JSType
+data JSValue
     = JSNull
     | JSBool     !Bool
     | JSRational !Rational
-    | JSString   JSONString
-    | JSArray    [JSType]
-    | JSObject   (JSONObject JSType)
+    | JSString   JSString
+    | JSArray    [JSValue]
+    | JSObject   (JSObject JSValue)
     deriving (Show, Read, Eq, Ord)
 
 -- | Strings can be represented a little more efficiently in JSON
-newtype JSONString   = JSONString { fromJSString :: String        }
+newtype JSString   = JSONString { fromJSString :: String }
     deriving (Eq, Ord, Show, Read)
 
 -- | Turn a Haskell string into a JSON string.
-toJSString :: String -> JSONString
+toJSString :: String -> JSString
 toJSString = JSONString
 
 -- | As can association lists
-newtype JSONObject e = JSONObject { fromJSObject :: [(String, e)] }
+newtype JSObject e = JSONObject { fromJSObject :: [(String, e)] }
     deriving (Eq, Ord, Show, Read)
 
 -- | Make JSON object out of an association list.
-toJSObject :: [(String,a)] -> JSONObject a
+toJSObject :: [(String,a)] -> JSObject a
 toJSObject = JSONObject
 
 
