@@ -17,6 +17,7 @@ author:             Galois Inc.
 maintainer:         Galois Inc
 Copyright:          (c) 2007 Galois Inc.
 cabal-version:      >= 1.2.0
+build-type: Simple
 
 flag split-base
   default: True
