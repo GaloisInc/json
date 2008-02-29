@@ -56,6 +56,7 @@ import Data.Int
 import Data.Word
 import Data.Either
 import Control.Monad(liftM,ap)
+import Control.Applicative
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -119,6 +120,17 @@ data Result a = Ok a | Error String
   deriving (Eq,Show)
 
 instance Functor Result where fmap = liftM
+
+instance Applicative Result where
+  (<*>) = ap
+  pure  = return
+
+instance Alternative Result where
+  Ok a <|> _    = Ok a
+  _    <|> Ok b = Ok b
+  err  <|> _    = err
+  empty         = Error "empty"
+
 instance Monad Result where
   return x      = Ok x
   fail x        = Error x
@@ -140,9 +152,6 @@ instance JSON JSValue where
 
 second :: (a -> b) -> (x,a) -> (x,b)
 second f (a,b) = (a, f b)
-
-(<$>) :: (Functor f) => (a -> b) -> f a -> f b
-(<$>) = fmap
 
 --------------------------------------------------------------------
 -- Some simple JSON wrapper types, to avoid overlapping instances
