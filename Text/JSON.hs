@@ -35,6 +35,7 @@ module Text.JSON (
   , JSObject
   , toJSObject
   , fromJSObject
+  , resultToEither
 
     -- * Serialization to and from Strings.
     -- ** Reading JSON
@@ -44,6 +45,7 @@ module Text.JSON (
     -- ** Writing JSON
   , showJSNull, showJSBool, showJSRational, showJSArray
   , showJSObject, showJSValue
+
 
   ) where
 
@@ -117,6 +119,11 @@ class JSON a where
 -- | A type for parser results
 data Result a = Ok a | Error String
   deriving (Eq,Show)
+
+-- | Map Results to Eithers
+resultToEither :: Result a -> Either String a
+resultToEither (Ok a)    = Right a
+resultToEither (Error s) = Left  s
 
 instance Functor Result where fmap = liftM
 instance Monad Result where
