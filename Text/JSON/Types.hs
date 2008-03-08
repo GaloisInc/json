@@ -19,11 +19,11 @@ module Text.JSON.Types (
     JSValue(..)
 
     -- * Wrapper Types
-  , JSString
+  , JSString(..)
   , toJSString
   , fromJSString
 
-  , JSObject
+  , JSObject(..)
   , toJSObject
   , fromJSObject
 
