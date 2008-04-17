@@ -15,7 +15,7 @@ license:            BSD3
 license-file:       LICENSE
 author:             Galois Inc.
 maintainer:         dons@galois.com
-Copyright:          (c) 2007 Galois Inc.
+Copyright:          (c) 2007-2008 Galois Inc.
 cabal-version:      >= 1.2.0
 build-type: Simple
 
