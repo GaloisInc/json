@@ -89,4 +89,3 @@ library
       exposed-modules:  Text.JSON.Pretty
   else
     build-depends:    base < 3
-    exposed-modules:  Text.JSON.Parsec, Text.JSON.Pretty
