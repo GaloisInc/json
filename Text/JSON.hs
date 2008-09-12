@@ -133,9 +133,8 @@ instance Applicative Result where
   pure  = return
 
 instance Alternative Result where
-  Ok a <|> _    = Ok a
-  _    <|> Ok b = Ok b
-  err  <|> _    = err
+  Ok a    <|> _ = Ok a
+  Error _ <|> b = b
   empty         = Error "empty"
 
 instance Monad Result where
