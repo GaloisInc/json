@@ -78,13 +78,13 @@ newtype JSObject e = JSONObject { fromJSObject :: [(String, e)] }
 toJSObject :: [(String,a)] -> JSObject a
 toJSObject = JSONObject
 
--- | Get the value of a field, if it exitst.
+-- | Get the value of a field, if it exist.
 get_field :: JSObject a -> String -> Maybe a
-get_field (JSObject xs) x = lookup x xs
+get_field (JSONObject xs) x = lookup x xs
 
 -- | Set the value of a field.  Previous values are overwritten.
 set_field :: JSObject a -> String -> a -> JSObject a
-set_field (JSObjext xs) k v = JSObjext ((k,v) : filter (/= k) xs)
+set_field (JSONObject xs) k v = JSONObject ((k,v) : filter ((/= k).fst) xs)
 
 
 
