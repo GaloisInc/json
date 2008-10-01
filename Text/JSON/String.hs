@@ -288,9 +288,13 @@ showJSBool False = showString "false"
 
 -- | Write the JSON String type
 showJSString :: JSString -> ShowS
-showJSString x = quote . foldr (.) quote (map sh (fromJSString x))
+showJSString x xs = quote (encJSString_ x (quote xs))
   where
         quote = showChar '"'
+
+encJSString_ :: JSString -> ShowS
+encJSString_ x xs = foldr sh xs (fromJSString x) --x acc -> sh x acc.) xs (map sh (fromJSString x))
+  where
         sh c  = case c of
                   '"'  -> showString "\\\""
                   '\\' -> showString "\\\\"
@@ -299,13 +303,14 @@ showJSString x = quote . foldr (.) quote (map sh (fromJSString x))
                   '\t' -> showString "\\t"
                   '\f' -> showString "\\f"
                   '\b' -> showString "\\b"
-                  _ | n < 32 -> showString "\\u"
+                  _ | n < 32 || n > 0x7e -> showString "\\u"
                        . showHex d1 . showHex d2 . showHex d3 . showHex d4
                   _ -> showChar c
           where n = fromEnum c
                 (d1,n1) = n  `divMod` 0x1000
                 (d2,n2) = n1 `divMod` 0x0100
                 (d3,d4) = n2 `divMod` 0x0010
+
 
 -- | Show a Rational in JSON format
 showJSRational :: Rational -> ShowS
@@ -321,7 +326,9 @@ showJSArray = showSequence '[' ']' ','
 
 -- | Show an association list in JSON format
 showJSObject :: JSObject JSValue -> ShowS
-showJSObject = showAssocs '{' '}' ',' . fromJSObject
+showJSObject = showAssocs '{' '}' ',' . map encField . fromJSObject 
+ where
+  encField (k,v) = (encJSString_ (toJSString k) "",v)
 
 -- | Show a generic sequence of pairs in JSON format
 showAssocs :: Char -> Char -> Char -> [(String,JSValue)] -> ShowS
