@@ -19,17 +19,20 @@ module Text.JSON.Types (
     JSValue(..)
 
     -- * Wrapper Types
-  , JSString(..)
+  , JSString({-fromJSString-}..)
   , toJSString
-  , fromJSString
+  , encJSString
 
-  , JSObject(..)
+  , JSObject({-fromJSObject-}..) 
   , toJSObject
-  , fromJSObject
+  
+  , get_field
+  , set_field
 
   ) where
 
 import Data.Char
+import Numeric ( showHex )
 import Data.Ratio
 
 --
@@ -68,7 +71,22 @@ newtype JSString   = JSONString { fromJSString :: String }
 
 -- | Turn a Haskell string into a JSON string.
 toJSString :: String -> JSString
-toJSString = JSONString
+toJSString x = JSONString x 
+  -- Note: we don't encode the string yet, that's done when serializing.
+
+encJSString :: String -> String
+encJSString ls = expEsc ls
+ where
+  expEsc "" = ""
+  expEsc (x:xs)
+   | fromEnum x >= 0x7f || 
+     (fromEnum x < 0x20 && not (x `elem` "\t\r\n\f\b\\")) 
+   = '\\':'u':(pad 4 (showHex (fromEnum x) "")) ++ expEsc xs
+  expEsc (x:xs) = x : expEsc xs
+
+  pad n cs  | len < n   = replicate (n-len) '0' ++ cs
+            | otherwise = cs
+   where len = length cs
 
 -- | As can association lists
 newtype JSObject e = JSONObject { fromJSObject :: [(String, e)] }
