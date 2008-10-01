@@ -48,7 +48,7 @@ pp_string        :: String -> Doc
 pp_string x       = doubleQuotes $ hcat $ map pp_char x
   where pp_char '\\'            = text "\\\\"
         pp_char '"'             = text "\\\""
-        pp_char c | isControl c = uni_esc c
+        pp_char c | isControl c || fromEnum c >= 0x7f = uni_esc c
         pp_char c               = char c
 
         uni_esc c = text "\\u" <> text (pad 4 (showHex (fromEnum c) ""))
