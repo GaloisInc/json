@@ -57,7 +57,7 @@ import Data.List
 import Data.Int
 import Data.Word
 import Data.Either
-import Control.Monad(liftM,ap)
+import Control.Monad(liftM,ap,MonadPlus(..))
 import Control.Applicative
 
 import qualified Data.ByteString.Char8 as S
@@ -136,6 +136,11 @@ instance Alternative Result where
   Ok a    <|> _ = Ok a
   Error _ <|> b = b
   empty         = Error "empty"
+
+instance MonadPlus Result where
+  Ok a `mplus` _ = Ok a
+  _ `mplus` x    = x
+  mzero          = Error "Result: MonadPlus.empty"
 
 instance Monad Result where
   return x      = Ok x
