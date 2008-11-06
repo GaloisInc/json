@@ -46,6 +46,8 @@ module Text.JSON (
   , showJSNull, showJSBool, showJSRational, showJSArray
   , showJSObject, showJSValue
 
+    -- ** Instance helpers
+  , makeObj, valFromObj
 
   ) where
 
@@ -373,3 +375,15 @@ instance JSON L.ByteString where
   showJSON = JSString . toJSString . L.unpack
   readJSON (JSString s) = return $ L.pack $ fromJSString s
   readJSON _ = mkError "Unable to read ByteString"
+
+-- -----------------------------------------------------------------
+-- Instance Helpers
+
+makeObj :: [(String, JSValue)] -> JSValue
+makeObj = JSObject . toJSObject
+
+-- | Pull a value out of a JSON object.
+valFromObj :: JSON a => String -> JSObject JSValue -> Result a
+valFromObj k o
+  | Just v <- lookup k (fromJSObject o) = readJSON v
+  | otherwise = Error $ "valFromObj: Could not find key: " ++ show k
