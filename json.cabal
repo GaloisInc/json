@@ -78,6 +78,7 @@ library
                    Text.JSON.String,
                    Text.JSON.ReadP
   ghc-options:     -Wall -O2
+  extensions:      DeriveDataTypeable, PatternGuards
 
   if flag(split-base)
     build-depends:   base >= 3, array, containers, bytestring

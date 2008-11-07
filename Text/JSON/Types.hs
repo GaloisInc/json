@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON.Types
@@ -21,19 +22,16 @@ module Text.JSON.Types (
     -- * Wrapper Types
   , JSString({-fromJSString-}..)
   , toJSString
-  , encJSString
 
-  , JSObject({-fromJSObject-}..) 
+  , JSObject({-fromJSObject-}..)
   , toJSObject
-  
+
   , get_field
   , set_field
 
   ) where
 
-import Data.Char
-import Numeric ( showHex )
-import Data.Ratio
+import Data.Typeable ( Typeable )
 
 --
 -- | JSON values
@@ -63,34 +61,20 @@ data JSValue
     | JSString   JSString
     | JSArray    [JSValue]
     | JSObject   (JSObject JSValue)
-    deriving (Show, Read, Eq, Ord)
+    deriving (Show, Read, Eq, Ord, Typeable)
 
 -- | Strings can be represented a little more efficiently in JSON
 newtype JSString   = JSONString { fromJSString :: String }
-    deriving (Eq, Ord, Show, Read)
+    deriving (Eq, Ord, Show, Read, Typeable)
 
 -- | Turn a Haskell string into a JSON string.
 toJSString :: String -> JSString
-toJSString x = JSONString x 
+toJSString = JSONString
   -- Note: we don't encode the string yet, that's done when serializing.
-
-encJSString :: String -> String
-encJSString ls = expEsc ls
- where
-  expEsc "" = ""
-  expEsc (x:xs)
-   | fromEnum x >= 0x7f || 
-     (fromEnum x < 0x20 && not (x `elem` "\t\r\n\f\b\\")) 
-   = '\\':'u':(pad 4 (showHex (fromEnum x) "")) ++ expEsc xs
-  expEsc (x:xs) = x : expEsc xs
-
-  pad n cs  | len < n   = replicate (n-len) '0' ++ cs
-            | otherwise = cs
-   where len = length cs
 
 -- | As can association lists
 newtype JSObject e = JSONObject { fromJSObject :: [(String, e)] }
-    deriving (Eq, Ord, Show, Read)
+    deriving (Eq, Ord, Show, Read, Typeable)
 
 -- | Make JSON object out of an association list.
 toJSObject :: [(String,a)] -> JSObject a
@@ -103,6 +87,3 @@ get_field (JSONObject xs) x = lookup x xs
 -- | Set the value of a field.  Previous values are overwritten.
 set_field :: JSObject a -> String -> a -> JSObject a
 set_field (JSONObject xs) k v = JSONObject ((k,v) : filter ((/= k).fst) xs)
-
-
-

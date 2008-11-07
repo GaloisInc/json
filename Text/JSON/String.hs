@@ -32,14 +32,15 @@ module Text.JSON.String (
 
   ) where
 
-import Text.JSON.Types
+import Text.JSON.Types (JSValue(..),
+                        JSString, toJSString, fromJSString,
+                        JSObject, toJSObject, fromJSObject)
 
-import Data.Char
-import Data.List
-import Data.Ratio
-import Data.Either
-import Control.Monad(liftM)
-import Numeric
+import Control.Monad (liftM)
+import Data.Char (isSpace, isDigit)
+import Data.List (isPrefixOf)
+import Data.Ratio (numerator, denominator, (%))
+import Numeric (readHex, readDec, showHex)
 
 
 -- -----------------------------------------------------------------
@@ -288,29 +289,9 @@ showJSBool False = showString "false"
 
 -- | Write the JSON String type
 showJSString :: JSString -> ShowS
-showJSString x xs = quote (encJSString_ x (quote xs))
+showJSString x xs = quote (encJSString x (quote xs))
   where
         quote = showChar '"'
-
-encJSString_ :: JSString -> ShowS
-encJSString_ x xs = foldr sh xs (fromJSString x) --x acc -> sh x acc.) xs (map sh (fromJSString x))
-  where
-        sh c  = case c of
-                  '"'  -> showString "\\\""
-                  '\\' -> showString "\\\\"
-                  '\n' -> showString "\\n"
-                  '\r' -> showString "\\r"
-                  '\t' -> showString "\\t"
-                  '\f' -> showString "\\f"
-                  '\b' -> showString "\\b"
-                  _ | n < 32 || n > 0x7e -> showString "\\u"
-                       . showHex d1 . showHex d2 . showHex d3 . showHex d4
-                  _ -> showChar c
-          where n = fromEnum c
-                (d1,n1) = n  `divMod` 0x1000
-                (d2,n2) = n1 `divMod` 0x0100
-                (d3,d4) = n2 `divMod` 0x0010
-
 
 -- | Show a Rational in JSON format
 showJSRational :: Rational -> ShowS
@@ -326,20 +307,46 @@ showJSArray = showSequence '[' ']' ','
 
 -- | Show an association list in JSON format
 showJSObject :: JSObject JSValue -> ShowS
-showJSObject = showAssocs '{' '}' ',' . map encField . fromJSObject 
- where
-  encField (k,v) = (encJSString_ (toJSString k) "",v)
+showJSObject = showAssocs '{' '}' ',' . fromJSObject
 
 -- | Show a generic sequence of pairs in JSON format
 showAssocs :: Char -> Char -> Char -> [(String,JSValue)] -> ShowS
-showAssocs start end sep xs rest = (start:[])
-    ++ concat (intersperse (sep:[]) $ map mkRecord xs)
-    ++ (end:[]) ++ rest
-  where mkRecord (k,v) = show k ++ ":" ++ showJSValue v []
+showAssocs start end sep xs rest = start : go xs
+  where
+  go [(k,v)]     = '"' : encJSString (toJSString k)
+                            ('"' : ':' : showJSValue v (go []))
+  go ((k,v):kvs) = '"' : encJSString (toJSString k)
+                            ('"' : ':' : showJSValue v (sep : go kvs))
+  go []          = end : rest
 
 -- | Show a generic sequence in JSON format
 showSequence :: Char -> Char -> Char -> [JSValue] -> ShowS
-showSequence start end sep xs rest = (start:[])
-  ++ concat (intersperse (sep:[]) $ map (flip showJSValue []) xs)
-  ++ (end:[]) ++ rest
+showSequence start end sep xs rest = start : go xs
+  where
+  go [y]        = showJSValue y (go [])
+  go (y:ys)     = showJSValue y (sep : go ys)
+  go []         = end : rest
+
+encJSString :: JSString -> ShowS
+encJSString jss ss = go (fromJSString jss)
+  where
+  go s1 =
+    case s1 of
+      (x   :xs) | x < '\x20' -> '\\' : encControl x (go xs)
+      ('"' :xs)              -> '\\' : '"'  : go xs
+      ('\\':xs)              -> '\\' : '\\' : go xs
+      (x   :xs)              -> x    : go xs
+      ""                     -> ss
+
+  encControl x xs = case x of
+    '\b' -> 'b' : xs
+    '\f' -> 'f' : xs
+    '\n' -> 'n' : xs
+    '\r' -> 'r' : xs
+    '\t' -> 't' : xs
+    _ | x < '\x10'   -> 'u' : '0' : '0' : '0' : hexxs
+      | x < '\x100'  -> 'u' : '0' : '0' : hexxs
+      | x < '\x1000' -> 'u' : '0' : hexxs
+      | otherwise    -> 'u' : hexxs
+      where hexxs = showHex (fromEnum x) xs
 
