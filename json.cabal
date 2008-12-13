@@ -1,5 +1,5 @@
 name:               json
-version:            0.3.5
+version:            0.3.6
 synopsis:           Support for serialising Haskell to and from JSON
 description:
     JSON (JavaScript Object Notation) is a lightweight data-interchange
@@ -14,7 +14,7 @@ category:           Web
 license:            BSD3
 license-file:       LICENSE
 author:             Galois Inc.
-maintainer:         dons@galois.com
+maintainer:         Sigbjorn Finne <sof@galois.com>
 Copyright:          (c) 2007-2008 Galois Inc.
 cabal-version:      >= 1.2.0
 build-type: Simple
@@ -78,7 +78,6 @@ library
                    Text.JSON.String,
                    Text.JSON.ReadP
   ghc-options:     -Wall -O2
-  extensions:      DeriveDataTypeable, PatternGuards
 
   if flag(split-base)
     build-depends:   base >= 3, array, containers, bytestring
