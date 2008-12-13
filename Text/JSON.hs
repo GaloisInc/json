@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternGuards #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON
@@ -355,8 +354,20 @@ instance JSON a => JSON [a] where
   readJSON = readJSONs
 
 instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
-  showJSON = showJSON . M.toList
-  readJSON a@(JSArray _) = M.fromList <$> readJSON a
+-- the previous version: showJSON = showJSON . M.toList
+  showJSON m = JSObject $ toJSObject $ 
+      map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) (M.toList m)
+
+  readJSON (JSObject o) = 
+     mapM rd (fromJSObject o) >>= return . M.fromList
+   where
+     rd (a,b) = do
+       f <- decode a
+       g <- readJSON b
+       return (f,g)
+
+   -- backwards compatibility..
+  readJSON a@(JSArray  _) = M.fromList <$> readJSON a
   readJSON _ = mkError "Unable to read Map"
 
 instance JSON I.IntSet where
@@ -385,6 +396,6 @@ makeObj = JSObject . toJSObject
 
 -- | Pull a value out of a JSON object.
 valFromObj :: JSON a => String -> JSObject JSValue -> Result a
-valFromObj k o
-  | Just v <- lookup k (fromJSObject o) = readJSON v
-  | otherwise = Error $ "valFromObj: Could not find key: " ++ show k
+valFromObj k o = maybe (Error $ "valFromObj: Could not find key: " ++ show k)
+                       readJSON
+		       (lookup k (fromJSObject o))
