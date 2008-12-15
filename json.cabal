@@ -1,5 +1,5 @@
 name:               json
-version:            0.3.7
+version:            0.4.0
 synopsis:           Support for serialising Haskell to and from JSON
 description:
     JSON (JavaScript Object Notation) is a lightweight data-interchange
@@ -71,6 +71,9 @@ flag parsec
 flag pretty
   default: True
   description: Add support for using pretty printing combinators.
+flag generic
+  default: True
+  description: Add support for generic encoder.
 
 library
   exposed-modules: Text.JSON,
@@ -81,6 +84,9 @@ library
 
   if flag(split-base)
     build-depends:   base >= 3, array, containers, bytestring
+    if flag(generic)
+      build-depends:    mtl
+      exposed-modules:  Text.JSON.Generic
     if flag(parsec)
       build-depends:    parsec
       exposed-modules:  Text.JSON.Parsec
