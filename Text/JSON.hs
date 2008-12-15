@@ -69,6 +69,8 @@ import qualified Data.Set as Set
 import qualified Data.Map as M
 import qualified Data.IntMap as IntMap
 
+import qualified Data.Array as Array
+
 ------------------------------------------------------------------------
 
 -- | Decode a String representing a JSON value 
@@ -377,6 +379,26 @@ instance (Ord a, JSON a) => JSON (Set.Set a) where
   showJSON = showJSON . Set.toList
   readJSON a@JSArray{} = Set.fromList <$> readJSON a
   readJSON _ = mkError "Unable to read Set"
+
+instance (Array.Ix i, JSON i, JSON e) => JSON (Array.Array i e) where
+  showJSON = showJSON . Array.assocs
+  readJSON a@JSArray{} = fromList <$> readJSON a
+    where
+     fromList [] = Array.array undefined []
+     fromList ls@((i,_):xs) = Array.array bnds ls
+       where
+        bnds = 
+	 foldr (\ (ix,_) (mi,ma) ->
+	         let
+		  mi1 = min ix mi
+		  ma1 = max ix ma
+		 in
+		 mi1 `seq` ma1 `seq` (mi1,ma1))
+	       (i,i)
+	       xs
+
+  readJSON _ = mkError "Unable to read Array"
+
 
 instance JSON I.IntSet where
   showJSON = showJSON . I.toList
