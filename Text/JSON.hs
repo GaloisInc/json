@@ -65,7 +65,9 @@ import Control.Applicative
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.IntSet as I
+import qualified Data.Set as Set
 import qualified Data.Map as M
+import qualified Data.IntMap as IntMap
 
 ------------------------------------------------------------------------
 
@@ -354,26 +356,45 @@ instance JSON a => JSON [a] where
   readJSON = readJSONs
 
 instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
--- the previous version: showJSON = showJSON . M.toList
-  showJSON m = JSObject $ toJSObject $ 
-      map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) (M.toList m)
+  showJSON m = showJSDict (M.toList m)
+-- the array version/alternative:
+-- showJSON = showJSON . M.toList
 
-  readJSON (JSObject o) = 
-     mapM rd (fromJSObject o) >>= return . M.fromList
+  readJSON o@JSObject{} = M.fromList <$>  readJSDict "Map" o
+   -- backwards compatibility..
+  readJSON a@JSArray{}  = M.fromList <$> readJSON a
+  readJSON _ = mkError "Unable to read Map"
+
+instance (JSON a) => JSON (IntMap.IntMap a) where
+  showJSON m = showJSDict (IntMap.toList m)
+  readJSON o@JSObject{} = IntMap.fromList <$>  readJSDict "IntMap" o
+ -- alternate (array) mapping:
+-- showJSON = showJSON . M.toList
+-- readJSON a@JSArray{}  = IntMap.fromList <$> readJSON a
+  readJSON _ = mkError "Unable to read IntMap"
+
+instance (Ord a, JSON a) => JSON (Set.Set a) where
+  showJSON = showJSON . Set.toList
+  readJSON a@JSArray{} = Set.fromList <$> readJSON a
+  readJSON _ = mkError "Unable to read Set"
+
+instance JSON I.IntSet where
+  showJSON = showJSON . I.toList
+  readJSON a@JSArray{} = I.fromList <$> readJSON a
+  readJSON _ = mkError "Unable to read IntSet"
+
+showJSDict :: (JSON a, JSON b) => [(a,b)] -> JSValue
+showJSDict ls = JSObject $ toJSObject $ 
+  map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) ls
+
+readJSDict :: (JSON a, JSON b) => String -> JSValue -> Result [(a,b)]
+readJSDict _ (JSObject o) = mapM rd (fromJSObject o)
    where
      rd (a,b) = do
        f <- decode a
        g <- readJSON b
        return (f,g)
-
-   -- backwards compatibility..
-  readJSON a@(JSArray  _) = M.fromList <$> readJSON a
-  readJSON _ = mkError "Unable to read Map"
-
-instance JSON I.IntSet where
-  showJSON = showJSON . I.toList
-  readJSON a@(JSArray _) = I.fromList <$> readJSON a
-  readJSON _ = mkError "Unable to read IntSet"
+readJSDict l _ = mkError (l ++ ": unable to read dict; expected JSON object")
 
 -- -----------------------------------------------------------------
 -- ByteStrings
