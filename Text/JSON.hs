@@ -155,7 +155,7 @@ instance Monad Result where
   Error x >>= _ = Error x
 
 -- | Convenient error generation
-mkError :: (JSON a) => String -> Result a
+mkError :: String -> Result a
 mkError s = Error s
 
 --------------------------------------------------------------------
@@ -209,13 +209,15 @@ instance JSON Char where
   readJSONs _             = mkError "Unable to read String"
 
 instance JSON Ordering where
-  showJSON LT = JSRational (-1)
-  showJSON EQ = JSRational 0
-  showJSON GT = JSRational 1
-  readJSON (JSRational (-1)) = return LT
-  readJSON (JSRational 0) = return EQ
-  readJSON (JSRational 1) = return GT
-  readJSON _ = mkError "Unable to read Ordering"
+  showJSON = encJSString show
+  readJSON = decJSString "Ordering" readOrd
+    where
+     readOrd x = 
+       case x of
+         "LT" -> return LT
+	 "EQ" -> return EQ
+	 "GT" -> return GT
+	 _    -> mkError ("Unable to read Ordering")
 
 -- -----------------------------------------------------------------
 -- Integral types
@@ -357,35 +359,41 @@ instance JSON a => JSON [a] where
   showJSON = showJSONs
   readJSON = readJSONs
 
-instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
-  showJSON m = showJSDict (M.toList m)
--- the array version/alternative:
--- showJSON = showJSON . M.toList
+-- container types:
 
-  readJSON o@JSObject{} = M.fromList <$>  readJSDict "Map" o
+instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
+  showJSON = encJSDict M.toList
+
    -- backwards compatibility..
   readJSON a@JSArray{}  = M.fromList <$> readJSON a
-  readJSON _ = mkError "Unable to read Map"
+  readJSON o = decJSDict "Map" M.fromList o
+-- alternate (array) mapping:
+-- showJSON = showJSArray M.toList
+-- readJSON = readJSArray "IntMap" IntMap.fromList
 
 instance (JSON a) => JSON (IntMap.IntMap a) where
-  showJSON m = showJSDict (IntMap.toList m)
-  readJSON o@JSObject{} = IntMap.fromList <$>  readJSDict "IntMap" o
- -- alternate (array) mapping:
--- showJSON = showJSON . M.toList
--- readJSON a@JSArray{}  = IntMap.fromList <$> readJSON a
-  readJSON _ = mkError "Unable to read IntMap"
+  showJSON = encJSDict IntMap.toList
+  readJSON = decJSDict "IntMap" IntMap.fromList
+-- alternate (array) mapping:
+-- showJSON = showJSArray M.toList
+-- readJSON = readJSArray "IntMap" IntMap.fromList
 
 instance (Ord a, JSON a) => JSON (Set.Set a) where
-  showJSON = showJSON . Set.toList
-  readJSON a@JSArray{} = Set.fromList <$> readJSON a
-  readJSON _ = mkError "Unable to read Set"
+  showJSON = encJSArray Set.toList
+  readJSON = decJSArray "Set" Set.fromList
 
 instance (Array.Ix i, JSON i, JSON e) => JSON (Array.Array i e) where
-  showJSON = showJSON . Array.assocs
-  readJSON a@JSArray{} = fromList <$> readJSON a
-    where
-     fromList [] = Array.array undefined []
-     fromList ls@((i,_):xs) = Array.array bnds ls
+  showJSON = encJSArray Array.assocs
+  readJSON = decJSArray "Array" arrayFromList
+
+instance JSON I.IntSet where
+  showJSON = encJSArray I.toList
+  readJSON = decJSArray "IntSet" I.fromList
+
+-- helper functions for array / object serializers:
+arrayFromList :: (Array.Ix i) => [(i,e)] -> Array.Array i e
+arrayFromList [] = Array.array undefined []
+arrayFromList ls@((i,_):xs) = Array.array bnds ls
        where
         bnds = 
 	 foldr (\ (ix,_) (mi,ma) ->
@@ -397,39 +405,16 @@ instance (Array.Ix i, JSON i, JSON e) => JSON (Array.Array i e) where
 	       (i,i)
 	       xs
 
-  readJSON _ = mkError "Unable to read Array"
-
-
-instance JSON I.IntSet where
-  showJSON = showJSON . I.toList
-  readJSON a@JSArray{} = I.fromList <$> readJSON a
-  readJSON _ = mkError "Unable to read IntSet"
-
-showJSDict :: (JSON a, JSON b) => [(a,b)] -> JSValue
-showJSDict ls = JSObject $ toJSObject $ 
-  map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) ls
-
-readJSDict :: (JSON a, JSON b) => String -> JSValue -> Result [(a,b)]
-readJSDict _ (JSObject o) = mapM rd (fromJSObject o)
-   where
-     rd (a,b) = do
-       f <- decode a
-       g <- readJSON b
-       return (f,g)
-readJSDict l _ = mkError (l ++ ": unable to read dict; expected JSON object")
-
 -- -----------------------------------------------------------------
 -- ByteStrings
 
 instance JSON S.ByteString where
-  showJSON = JSString . toJSString . S.unpack
-  readJSON (JSString s) = return $ S.pack $ fromJSString s
-  readJSON _ = mkError "Unable to read ByteString"
+  showJSON = encJSString S.unpack
+  readJSON = decJSString "ByteString" (return . S.pack)
 
 instance JSON L.ByteString where
-  showJSON = JSString . toJSString . L.unpack
-  readJSON (JSString s) = return $ L.pack $ fromJSString s
-  readJSON _ = mkError "Unable to read ByteString"
+  showJSON = encJSString L.unpack
+  readJSON = decJSString "Lazy.ByteString" (return . L.pack)
 
 -- -----------------------------------------------------------------
 -- Instance Helpers
@@ -442,3 +427,30 @@ valFromObj :: JSON a => String -> JSObject JSValue -> Result a
 valFromObj k o = maybe (Error $ "valFromObj: Could not find key: " ++ show k)
                        readJSON
 		       (lookup k (fromJSObject o))
+
+encJSString :: (a -> String) -> a -> JSValue
+encJSString f v = JSString (toJSString (f v))
+
+decJSString :: String -> (String -> Result a) -> JSValue -> Result a
+decJSString _ f (JSString s) = f (fromJSString s)
+decJSString l _ _ = mkError ("readJSON{"++l++"}: unable to parse string value")
+
+encJSArray :: (JSON a) => (b-> [a]) -> b -> JSValue
+encJSArray f v = showJSON (f v)
+
+decJSArray :: (JSON a) => String -> ([a] -> b) -> JSValue -> Result b
+decJSArray _ f a@JSArray{} = f <$> readJSON a
+decJSArray l _ _ = mkError ("readJSON{"++l++"}: unable to parse array value")
+
+encJSDict :: (JSON a, JSON b) => (c -> [(a,b)]) -> c -> JSValue
+encJSDict f v = makeObj $ 
+  map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) (f v)
+
+decJSDict :: (JSON a, JSON b) => String -> ([(a,b)] -> c) -> JSValue -> Result c
+decJSDict _ f (JSObject o) = mapM rd (fromJSObject o) >>= return . f
+   where
+     rd (a,b) = do
+       pa <- decode a
+       pb <- readJSON b
+       return (pa,pb)
+decJSDict l _ _ = mkError ("readJSON{"++l ++ "}: unable to read dict; expected JSON object")
