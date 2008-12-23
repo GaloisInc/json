@@ -25,8 +25,8 @@ module Text.JSON.String (
   , readJSValue, readJSTopType
 
     -- ** Writing JSON
-  , showJSNull, showJSBool, showJSRational, showJSArray
-  , showJSObject
+  , showJSNull, showJSBool, showJSArray
+  , showJSObject, showJSRational, showJSRational'
 
   , showJSValue, showJSTopType
 
@@ -81,11 +81,15 @@ x <$> y = fmap x y
 context :: String -> String
 context s = take 8 s
 
+isNullLexeme :: String -> Bool
+isNullLexeme ('n':'u':'l':'l':_) = True
+isNullLexeme _ = False
+
 -- | Read the JSON null type
 readJSNull :: GetJSON JSValue
 readJSNull = do
   xs <- getInput
-  if "null" `isPrefixOf` xs
+  if isNullLexeme xs 
         then setInput (drop 4 xs) >> return JSNull
         else fail $ "Unable to parse JSON null: " ++ context xs
 
@@ -245,8 +249,8 @@ readJSValue = do
     '{' : _ -> readJSObject
     't' : _ -> readJSBool
     'f' : _ -> readJSBool
-    xs    | "null" `isPrefixOf` xs -> readJSNull
-    (x:_) | x == '-' || isDigit x  -> JSRational <$> readJSRational
+    _     | isNullLexeme cs -> readJSNull
+    (x:_) | x == '-' || isDigit x  -> JSRational False <$> readJSRational
 
     xs -> fail $ "Malformed JSON: invalid token in this context " ++ context xs
 
@@ -271,12 +275,14 @@ showJSTopType x              = showJSTopType $ JSArray [x]
 
 -- | Show JSON values
 showJSValue :: JSValue -> ShowS
-showJSValue (JSNull)       = showJSNull
-showJSValue (JSBool b)     = showJSBool b
-showJSValue (JSRational r) = showJSRational r
-showJSValue (JSArray a)    = showJSArray a
-showJSValue (JSString s)   = showJSString s
-showJSValue (JSObject o)   = showJSObject o
+showJSValue jv =
+  case jv of
+    JSNull{}         -> showJSNull
+    JSBool b         -> showJSBool b
+    JSRational asF r -> showJSRational' asF r
+    JSArray a        -> showJSArray a
+    JSString s       -> showJSString s
+    JSObject o       -> showJSObject o
 
 -- | Write the JSON null type
 showJSNull :: ShowS
@@ -295,11 +301,22 @@ showJSString x xs = quote (encJSString x (quote xs))
 
 -- | Show a Rational in JSON format
 showJSRational :: Rational -> ShowS
-showJSRational r | denominator r == 1 = shows $ numerator r
-                 | otherwise = if isInfinite x || isNaN x then showJSNull
-                                                          else shows x
-                     where x :: Double
-                           x = realToFrac r
+showJSRational r = showJSRational' False r
+
+showJSRational' :: Bool -> Rational -> ShowS
+showJSRational' asFloat r 
+ | denominator r == 1      = shows $ numerator r
+ | isInfinite x || isNaN x = showJSNull
+ | asFloat                 = shows xf
+ | otherwise               = shows x
+ where 
+   x :: Double
+   x = realToFrac r
+   
+   xf :: Float
+   xf = realToFrac r
+
+
 
 -- | Show a list in JSON format
 showJSArray :: [JSValue] -> ShowS

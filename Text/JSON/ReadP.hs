@@ -38,7 +38,7 @@ p_value           =  (JSNull      <$  p_null)
                  <|> (JSArray     <$> p_array)
                  <|> (JSString    <$> p_js_string)
                  <|> (JSObject    <$> p_js_object)
-                 <|> (JSRational  <$> p_number)
+                 <|> (JSRational False <$> p_number)
 
 p_null           :: ReadP ()
 p_null            = token (string "null") >> return ()
