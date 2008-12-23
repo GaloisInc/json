@@ -85,7 +85,7 @@ library
   if flag(split-base)
     build-depends:   base >= 3, array, containers, bytestring
     if flag(generic)
-      build-depends:    mtl
+      build-depends:    mtl, syb
       exposed-modules:  Text.JSON.Generic
     if flag(parsec)
       build-depends:    parsec
