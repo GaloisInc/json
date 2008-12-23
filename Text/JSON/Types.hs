@@ -57,7 +57,7 @@ import Data.Typeable ( Typeable )
 data JSValue
     = JSNull
     | JSBool     !Bool
-    | JSRational !Rational
+    | JSRational Bool{-as Float?-} !Rational
     | JSString   JSString
     | JSArray    [JSValue]
     | JSObject   (JSObject JSValue)
@@ -74,7 +74,7 @@ toJSString = JSONString
 
 -- | As can association lists
 newtype JSObject e = JSONObject { fromJSObject :: [(String, e)] }
-    deriving (Eq, Ord, Show, Read, Typeable)
+    deriving (Eq, Ord, Show, Read, Typeable )
 
 -- | Make JSON object out of an association list.
 toJSObject :: [(String,a)] -> JSObject a
