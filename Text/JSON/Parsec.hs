@@ -37,7 +37,7 @@ p_value           =  (JSNull      <$  p_null)
                  <|> (JSArray     <$> p_array)
                  <|> (JSString    <$> p_js_string)
                  <|> (JSObject    <$> p_js_object)
-                 <|> (JSRational  <$> p_number)
+                 <|> (JSRational False <$> p_number)
                  <?> "JSON value"
 
 p_null           :: CharParser () ()
