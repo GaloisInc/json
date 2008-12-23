@@ -20,6 +20,9 @@ module Text.JSON.Generic
     , fromJSON
     , encodeJSON
     , decodeJSON
+
+    , toJSON_generic
+    , fromJSON_generic
     ) where
 
 import Control.Monad.State
@@ -27,7 +30,7 @@ import Control.Monad.Identity
 import Data.Char(toLower, toUpper)
 import Data.Maybe
 import Text.JSON
-import Text.JSON.String
+import Text.JSON.String ( runGetJSON )
 import Data.Generics
 import Data.Word
 import Data.Int
@@ -36,7 +39,7 @@ type T a = a -> JSValue
 
 -- |Convert anything to a JSON value.
 toJSON :: (Data a) => a -> JSValue
-toJSON = generic
+toJSON = toJSON_generic
          `ext1Q` jList
          -- Use the standard encoding for all base types.
          `extQ` (showJSON :: T Integer)
@@ -61,6 +64,10 @@ toJSON = generic
         -- Lists are simply coded as arrays.
         jList vs = JSArray $ map toJSON vs
 
+
+toJSON_generic :: (Data a) => a -> JSValue
+toJSON_generic = generic
+  where
         -- Generic encoding of an algebraic data type.
         --   No constructor, so it must be an error value.  Code it anyway as JSNull.
         --   Elide a single constructor and just code the arguments.
@@ -71,8 +78,9 @@ toJSON = generic
                 AlgRep []  -> JSNull
                 AlgRep [c] -> encodeArgs c (gmapQ toJSON a)
                 AlgRep _   -> encodeConstr (toConstr a) (gmapQ toJSON a)
-                rep        -> error $ "toJSON: not AlgRep " ++ show rep ++ "(" ++ show (dataTypeOf a) ++ ")"
-
+                rep        -> err (dataTypeOf a) rep
+           where
+              err dt r = error $ "toJSON: not AlgRep " ++ show r ++ "(" ++ show dt ++ ")"
         -- Encode nullary constructor as a string.
         -- Encode non-nullary constructors as an object with the constructor
         -- name as the single field and the arguments as the value.
@@ -100,12 +108,11 @@ toJSON = generic
         jsObject = JSObject . toJSObject
 
 
-
 type F a = Result a
 
 -- |Convert a JSON value to anything (fails if the types do not match).
 fromJSON :: (Data a) => JSValue -> Result a
-fromJSON j = generic
+fromJSON j = fromJSON_generic j
              `ext1R` jList
              `extR` (value :: F Integer)
              `extR` (value :: F Int)
@@ -132,6 +139,11 @@ fromJSON j = generic
                 JSArray js -> mapM fromJSON js
                 _ -> Error $ "fromJSON: Prelude.[] bad data: " ++ show j
 
+
+
+fromJSON_generic :: (Data a) => JSValue -> Result a
+fromJSON_generic j = generic
+  where
         typ = dataTypeOf $ resType generic
         generic = case dataTypeRep typ of
                       AlgRep []  -> case j of JSNull -> return (error "Empty type"); _ -> Error $ "fromJSON: no-constr bad data"
@@ -165,8 +177,6 @@ fromJSON j = generic
 
         resType :: Result a -> a
         resType _ = error "resType"
-
-
 
 -- |Encode a value as a string.
 encodeJSON :: (Data a) => a -> String
