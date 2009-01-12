@@ -1,4 +1,4 @@
--- {-# OPTIONS_GHC -XFlexibleInstances -XUndecidableInstances -XOverlappingInstances -XIncoherentInstances -fglasgow-exts #-}
+{-# OPTIONS_GHC -XMultiParamTypeClasses -XTypeSynonymInstances #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON
@@ -62,6 +62,7 @@ import Data.Word
 import Data.Either
 import Control.Monad(liftM,ap,MonadPlus(..))
 import Control.Applicative
+import Control.Monad.Error ( MonadError(..) )
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -154,6 +155,12 @@ instance Monad Result where
   fail x        = Error x
   Ok a >>= f    = f a
   Error x >>= _ = Error x
+
+instance MonadError String Result where
+  throwError x = Error x
+
+  catchError (Error e) h = h e
+  catchError x _ = x
 
 -- | Convenient error generation
 mkError :: String -> Result a
