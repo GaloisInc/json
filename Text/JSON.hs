@@ -1,11 +1,11 @@
-{-# OPTIONS_GHC -XMultiParamTypeClasses -XTypeSynonymInstances #-}
+{-# OPTIONS_GHC -XCPP -XMultiParamTypeClasses -XTypeSynonymInstances #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON
--- Copyright : (c) Galois, Inc. 2007
+-- Copyright : (c) Galois, Inc. 2007-2009
 -- License   : BSD3
 --
--- Maintainer:  Don Stewart <dons@galois.com>
+-- Maintainer:  Sigbjorn Finne <sof@galois.com>
 -- Stability :  provisional
 -- Portability: portable
 --
@@ -307,26 +307,26 @@ instance JSON Float where
 -- Sums
 
 instance (JSON a) => JSON (Maybe a) where
-  readJSON (JSObject o) = case "just" `lookup` as of
+  readJSON (JSObject o) = case "Just" `lookup` as of
       Just x -> Just <$> readJSON x
-      _      -> case "nothing" `lookup` as of
+      _      -> case ("Nothing" `lookup` as) of
           Just JSNull -> return Nothing
           _           -> mkError "Unable to read Maybe"
     where as = fromJSObject o
   readJSON _ = mkError "Unable to read Maybe"
-  showJSON (Just x) = JSObject $ toJSObject [("just", showJSON x)]
-  showJSON Nothing  = JSObject $ toJSObject [("nothing", JSNull)]
+  showJSON (Just x) = JSObject $ toJSObject [("Just", showJSON x)]
+  showJSON Nothing  = JSObject $ toJSObject [("Nothing", JSNull)]
 
 instance (JSON a, JSON b) => JSON (Either a b) where
-  readJSON (JSObject o) = case "left" `lookup` as of
+  readJSON (JSObject o) = case "Left" `lookup` as of
       Just a  -> Left <$> readJSON a
-      Nothing -> case "right" `lookup` as of
+      Nothing -> case "Right" `lookup` as of
           Just b  -> Right <$> readJSON b
           Nothing -> mkError "Unable to read Either"
     where as = fromJSObject o
   readJSON _ = mkError "Unable to read Either"
-  showJSON (Left a)  = JSObject $ toJSObject [("left",  showJSON a)]
-  showJSON (Right b) = JSObject $ toJSObject [("right", showJSON b)]
+  showJSON (Left a)  = JSObject $ toJSObject [("Left",  showJSON a)]
+  showJSON (Right b) = JSObject $ toJSObject [("Right", showJSON b)]
 
 -- -----------------------------------------------------------------
 -- Products
@@ -370,21 +370,25 @@ instance JSON a => JSON [a] where
 -- container types:
 
 instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
+#if !defined(MAP_AS_DICT)
+  showJSON = encJSArray M.toList
+  readJSON = decJSArray "Map" M.fromList
+#else
   showJSON = encJSDict M.toList
-
    -- backwards compatibility..
   readJSON a@JSArray{}  = M.fromList <$> readJSON a
   readJSON o = decJSDict "Map" M.fromList o
--- alternate (array) mapping:
--- showJSON = showJSArray M.toList
--- readJSON = readJSArray "IntMap" IntMap.fromList
+#endif
 
 instance (JSON a) => JSON (IntMap.IntMap a) where
+#if !defined(MAP_AS_DICT)
+  showJSON = encJSArray IntMap.toList
+  readJSON = decJSArray "IntMap" IntMap.fromList
+#else
+{- alternate (dict) mapping: -}
   showJSON = encJSDict IntMap.toList
   readJSON = decJSDict "IntMap" IntMap.fromList
--- alternate (array) mapping:
--- showJSON = showJSArray M.toList
--- readJSON = readJSArray "IntMap" IntMap.fromList
+#endif
 
 instance (Ord a, JSON a) => JSON (Set.Set a) where
   showJSON = encJSArray Set.toList
@@ -450,6 +454,7 @@ decJSArray :: (JSON a) => String -> ([a] -> b) -> JSValue -> Result b
 decJSArray _ f a@JSArray{} = f <$> readJSON a
 decJSArray l _ _ = mkError ("readJSON{"++l++"}: unable to parse array value")
 
+#if defined(MAP_AS_DICT)
 encJSDict :: (JSON a, JSON b) => (c -> [(a,b)]) -> c -> JSValue
 encJSDict f v = makeObj $ 
   map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) (f v)
@@ -466,4 +471,5 @@ decJSDict _ f (JSObject o) = mapM rd (fromJSObject o) >>= return . f
        pb <- readJSON b
        return (pa,pb)
 decJSDict l _ _ = mkError ("readJSON{"++l ++ "}: unable to read dict; expected JSON object")
+#endif
 
