@@ -1,0 +1,21 @@
+
+Version 0.4.1: released 2009-01-12; changes from 0.3.6
+
+  * Addition of extra JSON instances:
+       - IntMap, Set, Array, IntSet
+       
+  * Dropped initial letter case-lowering for constructors: 
+       - Maybe's constructors are mapped to "Nothing","Just".
+       - Either's constructors are mapped to "Left", "Right".
+
+  * Ordering's are represented by their constructor names (was
+    funky int-mapping.)
+
+  * JSON.Text.Result is now an instance of MonadError; contributed
+    by Andy Gimblett.
+
+  * Included Lennart Augustsson's contributed generic JSON encoder,
+    in Text.JSON.Generic
+
+  * Optional JSON dict-mapping for Data.Map and Data.IntMap
+
