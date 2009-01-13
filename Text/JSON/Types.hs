@@ -2,10 +2,10 @@
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON.Types
--- Copyright : (c) Galois, Inc. 2007
+-- Copyright : (c) Galois, Inc. 2007-2009
 -- License   : BSD3
 --
--- Maintainer:  Don Stewart <dons@galois.com>
+-- Maintainer:  Sigbjorn Finne <sof@galois.com>
 -- Stability :  provisional
 -- Portability: portable
 --
