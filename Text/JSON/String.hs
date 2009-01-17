@@ -38,7 +38,6 @@ import Text.JSON.Types (JSValue(..),
 
 import Control.Monad (liftM)
 import Data.Char (isSpace, isDigit)
-import Data.List (isPrefixOf)
 import Data.Ratio (numerator, denominator, (%))
 import Numeric (readHex, readDec, showHex)
 
@@ -81,27 +80,29 @@ x <$> y = fmap x y
 context :: String -> String
 context s = take 8 s
 
-isNullLexeme :: String -> Bool
-isNullLexeme ('n':'u':'l':'l':_) = True
-isNullLexeme _ = False
-
 -- | Read the JSON null type
 readJSNull :: GetJSON JSValue
 readJSNull = do
   xs <- getInput
-  if isNullLexeme xs 
-        then setInput (drop 4 xs) >> return JSNull
-        else fail $ "Unable to parse JSON null: " ++ context xs
+  case xs of
+    'n':'u':'l':'l':xs1 -> setInput xs1 >> return JSNull
+    _ -> fail $ "Unable to parse JSON null: " ++ context xs
+
+tryJSNull :: GetJSON JSValue -> GetJSON JSValue
+tryJSNull k = do
+  xs <- getInput
+  case xs of
+    'n':'u':'l':'l':xs1 -> setInput xs1 >> return JSNull
+    _ -> k 
 
 -- | Read the JSON Bool type
 readJSBool :: GetJSON JSValue
 readJSBool = do
   xs <- getInput
-  case () of {_
-      | "true"  `isPrefixOf` xs -> setInput (drop 4 xs) >> return (JSBool True)
-      | "false" `isPrefixOf` xs -> setInput (drop 5 xs) >> return (JSBool False)
-      | otherwise               -> fail $ "Unable to parse JSON Bool: " ++ context xs
-  }
+  case xs of
+    't':'r':'u':'e':xs1 -> setInput xs1 >> return (JSBool True)
+    'f':'a':'l':'s':'e':xs1 -> setInput xs1 >> return (JSBool False)
+    _ -> fail $ "Unable to parse JSON Bool: " ++ context xs
 
 -- | Read the JSON String type
 readJSString :: GetJSON JSValue
@@ -249,10 +250,9 @@ readJSValue = do
     '{' : _ -> readJSObject
     't' : _ -> readJSBool
     'f' : _ -> readJSBool
-    _     | isNullLexeme cs -> readJSNull
-    (x:_) | x == '-' || isDigit x  -> JSRational False <$> readJSRational
-
-    xs -> fail $ "Malformed JSON: invalid token in this context " ++ context xs
+    (x:_) | isDigit x || x == '-' -> JSRational False <$> readJSRational
+    xs -> tryJSNull
+             (fail $ "Malformed JSON: invalid token in this context " ++ context xs)
 
 -- | Top level JSON can only be Arrays or Objects
 readJSTopType :: GetJSON JSValue
