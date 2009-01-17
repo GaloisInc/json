@@ -89,10 +89,15 @@ library
   ghc-options:     -Wall -O2
 
   if flag(split-base)
-    build-depends:   base >= 3, array, containers, bytestring, mtl
     if flag(generic)
-      build-depends:    mtl, syb
+      build-depends:    base == 4.*, syb
       exposed-modules:  Text.JSON.Generic
+      Cpp-Options:      -DBASE_4
+    else
+      build-depends:    base >= 3
+
+    build-depends:   array, containers, bytestring, mtl
+
     if flag(parsec)
       build-depends:    parsec
       exposed-modules:  Text.JSON.Parsec
