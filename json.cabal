@@ -1,5 +1,5 @@
 name:               json
-version:            0.4.1
+version:            0.4.2
 synopsis:           Support for serialising Haskell to and from JSON
 description:
     JSON (JavaScript Object Notation) is a lightweight data-interchange
@@ -90,7 +90,8 @@ library
 
   if flag(split-base)
     if flag(generic)
-      build-depends:    base == 4.*, syb
+      build-depends:    base >=4 && <5, syb
+
       exposed-modules:  Text.JSON.Generic
       Cpp-Options:      -DBASE_4
     else
