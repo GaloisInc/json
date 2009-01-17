@@ -19,6 +19,7 @@ module Text.JSON.Parsec
   , p_number
   , p_js_string
   , p_js_object
+  , p_jvalue
   , module Text.ParserCombinators.Parsec
   ) where
 
@@ -28,11 +29,14 @@ import Control.Monad
 import Data.Char
 import Numeric
 
-tok              :: CharParser () a -> CharParser () a
-tok p             = spaces *> p
+p_value :: CharParser () JSValue
+p_value = spaces *> p_jvalue
 
-p_value          :: CharParser () JSValue
-p_value           =  (JSNull      <$  p_null)
+tok              :: CharParser () a -> CharParser () a
+tok p             = p <* spaces
+
+p_jvalue         :: CharParser () JSValue
+p_jvalue          =  (JSNull      <$  p_null)
                  <|> (JSBool      <$> p_boolean)
                  <|> (JSArray     <$> p_array)
                  <|> (JSString    <$> p_js_string)
@@ -51,7 +55,7 @@ p_boolean         = tok
 
 p_array          :: CharParser () [JSValue]
 p_array           = between (tok (char '[')) (tok (char ']'))
-                  $ p_value `sepBy` tok (char ',')
+                  $ p_jvalue `sepBy` tok (char ',')
 
 p_string         :: CharParser () String
 p_string          = between (tok (char '"')) (char '"') (many p_char)
@@ -78,7 +82,7 @@ p_string          = between (tok (char '"')) (char '"') (many p_char)
 p_object         :: CharParser () [(String,JSValue)]
 p_object          = between (tok (char '{')) (tok (char '}'))
                   $ p_field `sepBy` tok (char ',')
-  where p_field   = (,) <$> (p_string <* tok (char ':')) <*> p_value
+  where p_field   = (,) <$> (p_string <* tok (char ':')) <*> p_jvalue
 
 p_number         :: CharParser () Rational
 p_number          = do s <- getInput
