@@ -1,3 +1,13 @@
+Version 0.4.3: released 2009-01-17; changes from 0.4.2
+
+  * optimize some common cases..string and int literals.
+    Reduces parse times by > 2x on larger dict inputs containing
+    both kinds of lits.
+
+Version 0.4.2: released 2009-01-17; changes from 0.4.1
+
+  * fixed Cabal build issues with various versions of 'base' and Data.Generic
+  * fixed whitespace-handling bug in Parsec-based frontend.
 
 Version 0.4.1: released 2009-01-12; changes from 0.3.6
 
