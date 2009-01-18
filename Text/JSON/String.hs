@@ -121,7 +121,6 @@ readJSString = do
   case x of
        '"' : cs -> parse [] cs
        _        -> fail $ "Malformed JSON: expecting string: " ++ context x
-
  where 
   parse rs cs = 
     case cs of
@@ -131,10 +130,11 @@ readJSString = do
       c    : ds
        | c >= '\x20' && c <= '\xff'    -> parse (c:rs) ds
        | c < '\x20'     -> fail $ "Illegal unescaped character in string: " ++ context cs
-       | i <= 0x10fffff -> parse (c:rs) ds
+       | i <= 0x10ffff  -> parse (c:rs) ds
        | otherwise -> fail $ "Illegal unescaped character in string: " ++ context cs
        where
         i = (fromIntegral (fromEnum c) :: Integer)
+      _ -> fail $ "Unable to parse JSON String: unterminated String: " ++ context cs
 
   esc rs c cs = case c of
    '\\' -> parse ('\\' : rs) cs
