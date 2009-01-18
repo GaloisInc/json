@@ -13,34 +13,44 @@
 -- Basic support for working with JSON values.
 --
 
-module Text.JSON.String (
-    -- * Parsing
-    --
-     GetJSON, runGetJSON
+module Text.JSON.String 
+     ( 
+       -- * Parsing
+       --
+       GetJSON
+     , runGetJSON
 
-    -- ** Reading JSON
-  , readJSNull, readJSBool, readJSString, readJSRational
-  , readJSArray, readJSObject
+       -- ** Reading JSON
+     , readJSNull
+     , readJSBool
+     , readJSString
+     , readJSRational
+     , readJSArray
+     , readJSObject
 
-  , readJSValue, readJSTopType
+     , readJSValue
+     , readJSTopType
 
-    -- ** Writing JSON
-  , showJSNull, showJSBool, showJSArray
-  , showJSObject, showJSRational, showJSRational'
+       -- ** Writing JSON
+     , showJSNull
+     , showJSBool
+     , showJSArray
+     , showJSObject
+     , showJSRational
+     , showJSRational'
 
-  , showJSValue, showJSTopType
-
-  ) where
+     , showJSValue
+     , showJSTopType
+     ) where
 
 import Text.JSON.Types (JSValue(..),
                         JSString, toJSString, fromJSString,
                         JSObject, toJSObject, fromJSObject)
 
 import Control.Monad (liftM)
-import Data.Char (isSpace, isDigit)
+import Data.Char (isSpace, isDigit, digitToInt)
 import Data.Ratio (numerator, denominator, (%))
 import Numeric (readHex, readDec, showHex)
-
 
 -- -----------------------------------------------------------------
 -- | Parsing JSON
@@ -112,34 +122,37 @@ readJSString = do
        '"' : cs -> parse [] cs
        _        -> fail $ "Malformed JSON: expecting string: " ++ context x
 
- where parse rs cs = rs `seq` case cs of
-            '\\' : c : ds -> esc rs c ds
-            '"'  : ds     -> do setInput ds
-                                return . JSString . toJSString . reverse $ rs
-            c    : ds
-                |  (c `elem` (['\x20'..'\x21'] ++ ['\x23'..'\x5B'])) || (c >='\x5D' && c <= '\x10FFFF')
-                          -> parse (c:rs) ds
-                | otherwise
-                          -> fail $ "Illegal unescaped character in string: " ++ context cs
-            _             -> fail $ "Unable to parse JSON String: unterminated String: " ++ context cs
+ where 
+  parse rs cs = 
+    case cs of
+      '\\' : c : ds -> esc rs c ds
+      '"'  : ds     -> do setInput ds
+                          return (JSString (toJSString (reverse rs)))
+      c    : ds
+       | c >= '\x20' && c <= '\xff'    -> parse (c:rs) ds
+       | c < '\x20'     -> fail $ "Illegal unescaped character in string: " ++ context cs
+       | i <= 0x10fffff -> parse (c:rs) ds
+       | otherwise -> fail $ "Illegal unescaped character in string: " ++ context cs
+       where
+        i = (fromIntegral (fromEnum c) :: Integer)
 
-       esc rs c cs = case c of
-          '\\' -> parse ('\\' : rs) cs
-          '"'  -> parse ('"'  : rs) cs
-          'n'  -> parse ('\n' : rs) cs
-          'r'  -> parse ('\r' : rs) cs
-          't'  -> parse ('\t' : rs) cs
-          'f'  -> parse ('\f' : rs) cs
-          'b'  -> parse ('\b' : rs) cs
-          '/'  -> parse ('/'  : rs) cs
-          'u'  -> case cs of
-                    d1 : d2 : d3 : d4 : cs' ->
-                      case readHex [d1,d2,d3,d4] of
-                        [(n,"")] -> parse (toEnum n : rs) cs'
+  esc rs c cs = case c of
+   '\\' -> parse ('\\' : rs) cs
+   '"'  -> parse ('"'  : rs) cs
+   'n'  -> parse ('\n' : rs) cs
+   'r'  -> parse ('\r' : rs) cs
+   't'  -> parse ('\t' : rs) cs
+   'f'  -> parse ('\f' : rs) cs
+   'b'  -> parse ('\b' : rs) cs
+   '/'  -> parse ('/'  : rs) cs
+   'u'  -> case cs of
+             d1 : d2 : d3 : d4 : cs' ->
+               case readHex [d1,d2,d3,d4] of
+                 [(n,"")] -> parse (toEnum n : rs) cs'
 
-                        x -> fail $ "Unable to parse JSON String: invalid hex: " ++ context (show x)
-                    _ -> fail $ "Unable to parse JSON String: invalid hex: " ++ context cs
-          _ ->  fail $ "Unable to parse JSON String: invalid escape char: " ++ show c
+                 x -> fail $ "Unable to parse JSON String: invalid hex: " ++ context (show x)
+             _ -> fail $ "Unable to parse JSON String: invalid hex: " ++ context cs
+   _ ->  fail $ "Unable to parse JSON String: invalid escape char: " ++ show c
 
 
 -- | Read an Integer or Double in JSON format, returning a Rational
@@ -150,34 +163,47 @@ readJSRational = do
     '-' : ds -> negate <$> pos ds
     _        -> pos cs
 
-  where pos ('0':cs)  = frac 0 cs
-        pos cs        = case span isDigit cs of
-          ([],_)  -> fail $ "Unable to parse JSON Rational: " ++ context cs
-          (xs,ys) -> frac (fromInteger (read xs)) ys
+  where 
+   pos []     = fail $ "Unable to parse JSON Rational: " ++ context []
+   pos (c:cs) =
+     case c of
+       '0' -> frac 0 cs
+       _ 
+        | not (isDigit c) -> fail $ "Unable to parse JSON Rational: " ++ context cs
+	| otherwise -> readDigits (digitToIntI c) cs
 
-        frac n cs = case cs of
-            '.' : ds ->
-              case span isDigit ds of
-                ([],_) -> setInput cs >> return n
-                (as,bs) -> let x = read as :: Integer
-                               y = 10 ^ (fromIntegral (length as) :: Integer)
-                           in exponent' (n + (x % y)) bs
-            _ -> exponent' n cs
+   readDigits acc [] = frac (fromInteger acc) []
+   readDigits acc (x:xs)
+    | isDigit x = let acc' = 10*acc + digitToIntI x in 
+	          acc' `seq` readDigits acc' xs
+    | otherwise = frac (fromInteger acc) (x:xs)
 
-        exponent' n (c:cs)
-          | c == 'e' || c == 'E' = (n*) <$> exp_num cs
-        exponent' n cs = setInput cs >> return n
+   frac n ('.' : ds) = 
+       case span isDigit ds of
+         ([],_) -> setInput ds >> return n
+         (as,bs) -> let x = read as :: Integer
+                        y = 10 ^ (fromIntegral (length as) :: Integer)
+                    in exponent' (n + (x % y)) bs
+   frac n cs = exponent' n cs
 
-        exp_num          :: String -> GetJSON Rational
-        exp_num ('+':cs)  = exp_digs cs
-        exp_num ('-':cs)  = recip <$> exp_digs cs
-        exp_num cs        = exp_digs cs
+   exponent' n (c:cs)
+    | c == 'e' || c == 'E' = (n*) <$> exp_num cs
+   exponent' n cs = setInput cs >> return n
 
-        exp_digs :: String -> GetJSON Rational
-        exp_digs cs = case readDec cs of
-            [(a,ds)] -> do setInput ds
-                           return (fromIntegral ((10::Integer) ^ (a::Integer)))
-            _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
+   exp_num          :: String -> GetJSON Rational
+   exp_num ('+':cs)  = exp_digs cs
+   exp_num ('-':cs)  = recip <$> exp_digs cs
+   exp_num cs        = exp_digs cs
+
+   exp_digs :: String -> GetJSON Rational
+   exp_digs cs = case readDec cs of
+       [(a,ds)] -> do setInput ds
+                      return (fromIntegral ((10::Integer) ^ (a::Integer)))
+       _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
+
+   digitToIntI :: Char -> Integer
+   digitToIntI ch = fromIntegral (digitToInt ch)
+
 
 -- | Read a list in JSON format
 readJSArray  :: GetJSON JSValue
@@ -222,13 +248,13 @@ readAssocs start end sep = do
 
   where parsePairs rs = rs `seq` do
           a  <- do k  <- do x <- readJSString ; case x of
-                                JSString s -> return s
+                                JSString s -> return (fromJSString s)
                                 _          -> fail $ "Malformed JSON field labels: object keys must be quoted strings."
                    ds <- getInput
                    case dropWhile isSpace ds of
                        ':':es -> do setInput (dropWhile isSpace es)
                                     v <- readJSValue
-                                    return (fromJSString k,v)
+                                    return (k,v)
                        _      -> fail $ "Malformed JSON labelled field: " ++ context ds
 
           ds <- getInput
