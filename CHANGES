@@ -1,3 +1,7 @@
+Version 0.4.4: released 2009-01-17; changes from 0.4.2
+
+  * Fixes handling of unterminated strings.
+
 Version 0.4.3: released 2009-01-17; changes from 0.4.2
 
   * optimize some common cases..string and int literals.
