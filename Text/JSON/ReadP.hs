@@ -101,7 +101,7 @@ pure    = return
 (*>)    = (>>)
 
 (<*)   :: ReadP a -> ReadP b -> ReadP a
-m <* n  = do x <- m; n; return x
+m <* n  = do x <- m; _ <- n; return x
 
 empty  :: ReadP a
 empty   = pfail
