@@ -50,6 +50,7 @@ module Text.JSON (
 
     -- ** Instance helpers
   , makeObj, valFromObj
+  , JSKey(..), encJSDict, decJSDict
   
   ) where
 
@@ -360,26 +361,26 @@ instance JSON a => JSON [a] where
 
 -- container types:
 
-instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
 #if !defined(MAP_AS_DICT)
+instance (Ord a, JSON a, JSON b) => JSON (M.Map a b) where
   showJSON = encJSArray M.toList
   readJSON = decJSArray "Map" M.fromList
-#else
-  showJSON = encJSDict M.toList
-   -- backwards compatibility..
-  readJSON a@JSArray{}  = M.fromList <$> readJSON a
-  readJSON o = decJSDict "Map" M.fromList o
-#endif
 
 instance (JSON a) => JSON (IntMap.IntMap a) where
-#if !defined(MAP_AS_DICT)
   showJSON = encJSArray IntMap.toList
   readJSON = decJSArray "IntMap" IntMap.fromList
+
 #else
-{- alternate (dict) mapping: -}
-  showJSON = encJSDict IntMap.toList
-  readJSON = decJSDict "IntMap" IntMap.fromList
+instance (Ord a, JSKey a, JSON b) => JSON (M.Map a b) where
+  showJSON    = encJSDict . M.toList
+  readJSON o  = M.fromList <$> decJSDict "Map" o
+
+instance (JSON a) => JSON (IntMap.IntMap a) where
+  {- alternate (dict) mapping: -}
+  showJSON    = encJSDict . IntMap.toList
+  readJSON o  = IntMap.fromList <$> decJSDict "IntMap" o
 #endif
+
 
 instance (Ord a, JSON a) => JSON (Set.Set a) where
   showJSON = encJSArray Set.toList
@@ -445,22 +446,42 @@ decJSArray :: (JSON a) => String -> ([a] -> b) -> JSValue -> Result b
 decJSArray _ f a@JSArray{} = f <$> readJSON a
 decJSArray l _ _ = mkError ("readJSON{"++l++"}: unable to parse array value")
 
-#if defined(MAP_AS_DICT)
-encJSDict :: (JSON a, JSON b) => (c -> [(a,b)]) -> c -> JSValue
-encJSDict f v = makeObj $ 
-  map (\ (x,y) -> (showJSValue (showJSON x) "", showJSON y)) (f v)
+-- | Haskell types that can be used as keys in JSON objects.
+class JSKey a where
+  toJSKey   :: a -> String
+  fromJSKey :: String -> Maybe a
 
-decJSDict :: (JSON a, JSON b)
+instance JSKey JSString where
+  toJSKey x   = fromJSString x
+  fromJSKey x = Just (toJSString x)
+
+instance JSKey Int where
+  toJSKey   = show
+  fromJSKey key = case reads key of
+                    [(a,"")] -> Just a
+                    _        -> Nothing
+
+-- NOTE: This prevents us from making other instances for lists but,
+-- our guess is that strings are used as keys more often then other list types.
+instance JSKey String where
+  toJSKey   = id
+  fromJSKey = Just
+  
+-- | Encode an association list as 'JSObject' value.
+encJSDict :: (JSKey a, JSON b) => [(a,b)] -> JSValue
+encJSDict v = makeObj [ (toJSKey x, showJSON y) | (x,y) <- v ]
+
+-- | Decode a 'JSObject' value into an association list.
+decJSDict :: (JSKey a, JSON b)
           => String
-	  -> ([(a,b)] -> c)
 	  -> JSValue
-	  -> Result c
-decJSDict _ f (JSObject o) = mapM rd (fromJSObject o) >>= return . f
-   where
-     rd (a,b) = do
-       pa <- decode a
-       pb <- readJSON b
-       return (pa,pb)
-decJSDict l _ _ = mkError ("readJSON{"++l ++ "}: unable to read dict; expected JSON object")
-#endif
+	  -> Result [(a,b)]
+decJSDict l (JSObject o) = mapM rd (fromJSObject o)
+  where rd (a,b) = case fromJSKey a of
+                     Just pa -> readJSON b >>= \pb -> return (pa,pb)
+                     Nothing -> mkError ("readJSON{" ++ l ++ "}:" ++
+                                    "unable to read dict; invalid object key")
+
+decJSDict l _ = mkError ("readJSON{"++l ++ "}: unable to read dict; expected JSON object")
+
 
