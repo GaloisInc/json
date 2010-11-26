@@ -56,10 +56,8 @@ module Text.JSON (
 import Text.JSON.Types
 import Text.JSON.String
 
-import Data.List
 import Data.Int
 import Data.Word
-import Data.Either
 import Control.Monad(liftM,ap,MonadPlus(..))
 import Control.Applicative
 import Control.Monad.Error ( MonadError(..) )
