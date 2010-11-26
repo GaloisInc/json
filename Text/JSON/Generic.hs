@@ -26,8 +26,6 @@ module Text.JSON.Generic
     ) where
 
 import Control.Monad.State
-import Control.Monad.Identity
-import Data.Maybe
 import Text.JSON
 import Text.JSON.String ( runGetJSON )
 import Data.Generics
