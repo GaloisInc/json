@@ -90,7 +90,7 @@ library
 
   if flag(split-base)
     if flag(generic)
-      build-depends:    base >=4 && <5, syb
+      build-depends:    base >=4 && <5, syb >= 0.3.3
 
       exposed-modules:  Text.JSON.Generic
       Cpp-Options:      -DBASE_4
