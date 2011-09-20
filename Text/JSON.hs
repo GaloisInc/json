@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -XCPP -XTypeSynonymInstances #-}
+{-# LANGUAGE CPP, TypeSynonymInstances, FlexibleInstances #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.JSON
