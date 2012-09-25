@@ -58,7 +58,7 @@ p_array           = between (tok (char '[')) (tok (char ']'))
                   $ p_jvalue `sepBy` tok (char ',')
 
 p_string         :: CharParser () String
-p_string          = between (tok (char '"')) (char '"') (many p_char)
+p_string          = between (tok (char '"')) (tok (char '"')) (many p_char)
   where p_char    =  (char '\\' >> p_esc)
                  <|> (satisfy (\x -> x /= '"' && x /= '\\'))
 
@@ -85,7 +85,8 @@ p_object          = between (tok (char '{')) (tok (char '}'))
   where p_field   = (,) <$> (p_string <* tok (char ':')) <*> p_jvalue
 
 p_number         :: CharParser () Rational
-p_number          = do s <- getInput
+p_number          = tok
+                  $ do s <- getInput
                        case readSigned readFloat s of
                          [(n,s1)] -> n <$ setInput s1
                          _        -> empty
