@@ -97,7 +97,7 @@ library
     else
       build-depends:    base >= 3
 
-    build-depends:   array, containers, bytestring, mtl
+    build-depends:   array, containers, bytestring, mtl, text
 
     if flag(parsec)
       build-depends:    parsec
