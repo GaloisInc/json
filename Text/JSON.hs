@@ -70,6 +70,7 @@ import qualified Data.Map as M
 import qualified Data.IntMap as IntMap
 
 import qualified Data.Array as Array
+import qualified Data.Text as T
 
 ------------------------------------------------------------------------
 
@@ -419,6 +420,15 @@ instance JSON S.ByteString where
 instance JSON L.ByteString where
   showJSON = encJSString L.unpack
   readJSON = decJSString "Lazy.ByteString" (return . L.pack)
+
+-- -----------------------------------------------------------------
+-- Data.Text
+
+instance JSON T.Text where
+  readJSON (JSString s) = return (T.pack . fromJSString $ s)
+  readJSON _            = mkError "Unable to read JSString"
+  showJSON              = JSString . toJSString . T.unpack
+
 
 -- -----------------------------------------------------------------
 -- Instance Helpers
