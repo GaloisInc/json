@@ -47,7 +47,8 @@ import Text.JSON.Types (JSValue(..),
                         JSString, toJSString, fromJSString,
                         JSObject, toJSObject, fromJSObject)
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, ap)
+import qualified Control.Applicative as A
 import Data.Char (isSpace, isDigit, digitToInt)
 import Data.Ratio (numerator, denominator, (%))
 import Numeric (readHex, readDec, showHex)
@@ -59,6 +60,10 @@ import Numeric (readHex, readDec, showHex)
 newtype GetJSON a = GetJSON { un :: String -> Either String (a,String) }
 
 instance Functor GetJSON where fmap = liftM
+instance A.Applicative GetJSON where
+  pure  = return
+  (<*>) = ap
+
 instance Monad GetJSON where
   return x        = GetJSON (\s -> Right (x,s))
   fail x          = GetJSON (\_ -> Left x)
