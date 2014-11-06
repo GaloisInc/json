@@ -20,7 +20,6 @@ install:
 script:
  - cabal-1.18 configure -v2
  - cabal-1.18 build
- - cabal-1.18 check
  - cabal-1.18 sdist
  - export SRC_TGZ=$(cabal-1.18 info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
