@@ -64,6 +64,10 @@ extra-source-files:
     tests/unit/pass2.json
     tests/unit/pass3.json
 
+source-repository head
+    type:     git
+    location: https://github.com/GaloisInc/json.git
+
 flag split-base
   default: True
   description: Use the new split base package.
