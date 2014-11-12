@@ -1,5 +1,5 @@
 name:               json
-version:            0.8
+version:            0.9
 synopsis:           Support for serialising Haskell to and from JSON
 description:
     JSON (JavaScript Object Notation) is a lightweight data-interchange

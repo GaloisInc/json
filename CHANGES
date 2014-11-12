@@ -1,3 +1,6 @@
+Version 0.9
+  * Merge-in contributions from Neil Mitchell to accomodate working with HEAD.
+
 Version 0.8
   * Add `Applicative` instance for `GetJSON`
 
