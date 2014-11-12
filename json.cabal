@@ -16,7 +16,7 @@ license-file:       LICENSE
 author:             Galois Inc.
 maintainer:         Iavor S. Diatchki (iavor.diatchki@gmail.com)
 Copyright:          (c) 2007-2009 Galois Inc.
-cabal-version:      >= 1.2.0
+cabal-version:      >= 1.6
 build-type: Simple
 extra-source-files:
     CHANGES
@@ -63,6 +63,10 @@ extra-source-files:
     tests/unit/pass1.json
     tests/unit/pass2.json
     tests/unit/pass3.json
+
+source-repository head
+    type:     git
+    location: https://github.com/GaloisInc/json.git
 
 flag split-base
   default: True
