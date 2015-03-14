@@ -1,3 +1,6 @@
+Version 0.9.1
+  * Merge-in contributions from Neil Mitchell to support GHC 7.10
+
 Version 0.9
   * Merge-in contributions from Neil Mitchell to accomodate working with HEAD.
 
