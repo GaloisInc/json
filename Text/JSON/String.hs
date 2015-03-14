@@ -48,6 +48,7 @@ import Text.JSON.Types (JSValue(..),
                         JSObject, toJSObject, fromJSObject)
 
 import Control.Monad (liftM, ap)
+import Control.Applicative((<$>))
 import qualified Control.Applicative as A
 import Data.Char (isSpace, isDigit, digitToInt)
 import Data.Ratio (numerator, denominator, (%))
@@ -85,9 +86,6 @@ getInput    = GetJSON (\s -> Right (s,s))
 
 setInput   :: String -> GetJSON ()
 setInput s  = GetJSON (\_ -> Right ((),s))
-
-(<$>) :: Functor f => (a -> b) -> f a -> f b
-x <$> y = fmap x y
 
 -------------------------------------------------------------------------
 
