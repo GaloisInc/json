@@ -17,6 +17,7 @@ module Text.JSON.Pretty
 
 import Text.JSON.Types
 import Text.PrettyPrint.HughesPJ
+import qualified Text.PrettyPrint.HughesPJ as PP
 import Data.Ratio
 import Data.Char
 import Numeric
@@ -52,7 +53,7 @@ pp_string x       = doubleQuotes $ hcat $ map pp_char x
         pp_char c | isControl c || fromEnum c >= 0x7f = uni_esc c
         pp_char c               = char c
 
-        uni_esc c = text "\\u" <> text (pad 4 (showHex (fromEnum c) ""))
+        uni_esc c = text "\\u" PP.<> text (pad 4 (showHex (fromEnum c) ""))
 
         pad n cs  | len < n   = replicate (n-len) '0' ++ cs
                   | otherwise = cs
@@ -60,7 +61,7 @@ pp_string x       = doubleQuotes $ hcat $ map pp_char x
 
 pp_object        :: [(String,JSValue)] -> Doc
 pp_object xs      = braces $ fsep $ punctuate comma $ map pp_field xs
-  where pp_field (k,v) = pp_string k <> colon <+> pp_value v
+  where pp_field (k,v) = pp_string k PP.<> colon <+> pp_value v
 
 pp_js_string     :: JSString -> Doc
 pp_js_string x    = pp_string (fromJSString x)
