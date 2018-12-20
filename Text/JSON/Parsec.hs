@@ -1,13 +1,4 @@
---------------------------------------------------------------------
--- |
--- Module    : Text.JSON.Parsec
--- Copyright : (c) Galois, Inc. 2007-2009
---
--- Maintainer:  Sigbjorn Finne <sof@galois.com>
--- Stability :  provisional
--- Portability: portable
---
--- Parse JSON values using the Parsec combinators.
+-- | Parse JSON values using the Parsec combinators.
 
 module Text.JSON.Parsec
   ( p_value

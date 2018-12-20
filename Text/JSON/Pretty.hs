@@ -1,14 +1,4 @@
---------------------------------------------------------------------
--- |
--- Module    : Text.JSON.Pretty
--- Copyright : (c) Galois, Inc. 2007-2009
--- License   : BSD3
---
--- Maintainer:  Sigbjorn Finne <sof@galois.com>
--- Stability :  provisional
--- Portability: portable
---
--- Display JSON values using pretty printing combinators.
+-- | Display JSON values using pretty printing combinators.
 
 module Text.JSON.Pretty
   ( module Text.JSON.Pretty

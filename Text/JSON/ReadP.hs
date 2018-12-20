@@ -1,14 +1,4 @@
---------------------------------------------------------------------
--- |
--- Module    : Text.JSON.ReadP
--- Copyright : (c) Galois, Inc. 2007-2009
--- License   : BSD3
---
--- Maintainer:  Sigbjorn Finne <sof@galois.com>
--- Stability :  provisional
--- Portability: portable
---
--- Parse JSON values using the ReadP combinators.
+-- | Parse JSON values using the ReadP combinators.
 
 module Text.JSON.ReadP
   ( p_value

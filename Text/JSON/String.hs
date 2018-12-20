@@ -1,17 +1,4 @@
---------------------------------------------------------------------
--- |
--- Module    : Text.JSON.String
--- Copyright : (c) Galois, Inc. 2007-2009
--- License   : BSD3
---
--- Maintainer:  Sigbjorn Finne <sof@galois.com>
--- Stability :  provisional
--- Portability: portable
---
---------------------------------------------------------------------
---
--- Basic support for working with JSON values.
---
+-- | Basic support for working with JSON values.
 
 module Text.JSON.String 
      ( 

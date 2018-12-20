@@ -1,19 +1,5 @@
 {-# LANGUAGE CPP, TypeSynonymInstances, FlexibleInstances #-}
---------------------------------------------------------------------
--- |
--- Module    : Text.JSON
--- Copyright : (c) Galois, Inc. 2007-2009
--- License   : BSD3
---
--- Maintainer:  Sigbjorn Finne <sof@galois.com>
--- Stability :  provisional
--- Portability: portable
---
---------------------------------------------------------------------
---
--- Serialising Haskell values to and from JSON values.
---
-
+-- | Serialising Haskell values to and from JSON values.
 module Text.JSON (
     -- * JSON Types
     JSValue(..)

@@ -1,15 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
---------------------------------------------------------------------
--- |
--- Module    : Text.JSON.Generic
--- Copyright : (c) Lennart Augustsson, 2008-2009
--- License   : BSD3
---
--- Maintainer:  Sigbjorn Finne <sof@galois.com>
--- Stability :  provisional
--- Portability: portable
---
--- JSON serializer and deserializer using Data.Generics.
+-- | JSON serializer and deserializer using Data.Generics.
 -- The functions here handle algebraic data types and primitive types.
 -- It uses the same representation as "Text.JSON" for "Prelude" types.
 module Text.JSON.Generic 
