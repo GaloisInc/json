@@ -19,6 +19,7 @@ module Text.JSON.Types (
   ) where
 
 import Data.Typeable ( Typeable )
+import Data.String(IsString(..))
 
 --
 -- | JSON values
@@ -58,6 +59,12 @@ newtype JSString   = JSONString { fromJSString :: String }
 toJSString :: String -> JSString
 toJSString = JSONString
   -- Note: we don't encode the string yet, that's done when serializing.
+
+instance IsString JSString where
+  fromString = toJSString
+
+instance IsString JSValue where
+  fromString = JSString . fromString
 
 -- | As can association lists
 newtype JSObject e = JSONObject { fromJSObject :: [(String, e)] }
