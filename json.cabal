@@ -15,7 +15,7 @@ license:            BSD3
 license-file:       LICENSE
 author:             Galois Inc.
 maintainer:         Iavor S. Diatchki (iavor.diatchki@gmail.com)
-Copyright:          (c) 2007-2009 Galois Inc.
+Copyright:          (c) 2007-2018 Galois Inc.
 cabal-version:      >= 1.6
 build-type: Simple
 extra-source-files:
@@ -114,3 +114,6 @@ library
 
   if flag(mapdict)
      cpp-options:     -DMAP_AS_DICT
+
+
+

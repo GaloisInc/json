@@ -202,9 +202,9 @@ instance JSON Ordering where
      readOrd x = 
        case x of
          "LT" -> return Prelude.LT
-	 "EQ" -> return Prelude.EQ
-	 "GT" -> return Prelude.GT
-	 _    -> mkError ("Unable to read Ordering")
+         "EQ" -> return Prelude.EQ
+         "GT" -> return Prelude.GT
+         _    -> mkError ("Unable to read Ordering")
 
 -- -----------------------------------------------------------------
 -- Integral types
@@ -385,16 +385,14 @@ instance JSON I.IntSet where
 arrayFromList :: (Array.Ix i) => [(i,e)] -> Array.Array i e
 arrayFromList [] = Array.array undefined []
 arrayFromList ls@((i,_):xs) = Array.array bnds ls
-       where
-        bnds = 
-	 foldr (\ (ix,_) (mi,ma) ->
-	         let
-		  mi1 = min ix mi
-		  ma1 = max ix ma
-		 in
-		 mi1 `seq` ma1 `seq` (mi1,ma1))
-	       (i,i)
-	       xs
+  where
+  bnds = foldr step (i,i) xs
+
+  step (ix,_) (mi,ma) =
+    let mi1 = min ix mi
+        ma1 = max ix ma
+    in mi1 `seq` ma1 `seq` (mi1,ma1)
+
 
 -- -----------------------------------------------------------------
 -- ByteStrings
@@ -426,7 +424,7 @@ makeObj = JSObject . toJSObject
 valFromObj :: JSON a => String -> JSObject JSValue -> Result a
 valFromObj k o = maybe (Error $ "valFromObj: Could not find key: " ++ show k)
                        readJSON
-		       (lookup k (fromJSObject o))
+                       (lookup k (fromJSObject o))
 
 encJSString :: (a -> String) -> a -> JSValue
 encJSString f v = JSString (toJSString (f v))
@@ -470,8 +468,8 @@ encJSDict v = makeObj [ (toJSKey x, showJSON y) | (x,y) <- v ]
 -- | Decode a 'JSObject' value into an association list.
 decJSDict :: (JSKey a, JSON b)
           => String
-	  -> JSValue
-	  -> Result [(a,b)]
+          -> JSValue
+          -> Result [(a,b)]
 decJSDict l (JSObject o) = mapM rd (fromJSObject o)
   where rd (a,b) = case fromJSKey a of
                      Just pa -> readJSON b >>= \pb -> return (pa,pb)

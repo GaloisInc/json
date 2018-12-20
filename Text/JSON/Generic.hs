@@ -97,7 +97,7 @@ toJSON_generic = generic
         mungeField ('_':cs) = cs
         mungeField cs = cs
 
-	jsObject :: [(String, JSValue)] -> JSValue
+        jsObject :: [(String, JSValue)] -> JSValue
         jsObject = JSObject . toJSObject
 
 
@@ -107,7 +107,7 @@ type F a = Result a
 fromJSON :: (Data a) => JSValue -> Result a
 fromJSON j = fromJSON_generic j
              `ext1R` jList
-	     --
+
              `extR` (value :: F Integer)
              `extR` (value :: F Int)
              `extR` (value :: F Word8)
@@ -122,11 +122,11 @@ fromJSON j = fromJSON_generic j
              `extR` (value :: F Float)
              `extR` (value :: F Char)
              `extR` (value :: F String)
-	     --
+
              `extR` (value :: F Bool)
              `extR` (value :: F ())
              `extR` (value :: F Ordering)
-	     --
+
              `extR` (value :: F I.IntSet)
              `extR` (value :: F S.ByteString)
              `extR` (value :: F L.ByteString)
@@ -152,9 +152,9 @@ fromJSON_generic j = generic
         getConstr t (JSObject o) | [(s, j')] <- fromJSObject o = do c <- readConstr' t s; return (c, j')
         getConstr t (JSString js) = do c <- readConstr' t (fromJSString js); return (c, JSNull) -- handle nullare constructor
         getConstr _ _ = Error "fromJSON: bad constructor encoding"
-        readConstr' t s = 
-	  maybe (Error $ "fromJSON: unknown constructor: " ++ s ++ " " ++ show t) 
-	        return $ readConstr t s
+        readConstr' t s =
+          maybe (Error $ "fromJSON: unknown constructor: " ++ s ++ " " ++ show t)
+                return $ readConstr t s
 
         decodeArgs c = decodeArgs' (numConstrArgs (resType generic) c) c (constrFields c)
         decodeArgs' 0 c  _       JSNull               = construct c []   -- nullary constructor
