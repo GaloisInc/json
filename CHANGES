@@ -1,3 +1,6 @@
+NEXT
+  * Add `MonadFail` instances and only define `Monad.fail` on pre-8.6 GHCs.
+
 Version 0.9.1
   * Merge-in contributions from Neil Mitchell to support GHC 7.10
 

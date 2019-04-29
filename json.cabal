@@ -115,5 +115,5 @@ library
   if flag(mapdict)
      cpp-options:     -DMAP_AS_DICT
 
-
-
+  if !(impl(ghc >= 8.0))
+    build-depends:    fail

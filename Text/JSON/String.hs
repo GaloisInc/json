@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- | Basic support for working with JSON values.
 
 module Text.JSON.String 
@@ -35,6 +36,7 @@ import Text.JSON.Types (JSValue(..),
                         JSObject, toJSObject, fromJSObject)
 
 import Control.Monad (liftM, ap)
+import qualified Control.Monad.Fail as Fail
 import Control.Applicative((<$>))
 import qualified Control.Applicative as A
 import Data.Char (isSpace, isDigit, digitToInt)
@@ -54,10 +56,15 @@ instance A.Applicative GetJSON where
 
 instance Monad GetJSON where
   return x        = GetJSON (\s -> Right (x,s))
-  fail x          = GetJSON (\_ -> Left x)
+#if !(MIN_VERSION_base(4,13,0))
+  fail x          = Fail.fail x
+#endif
   GetJSON m >>= f = GetJSON (\s -> case m s of
                                      Left err -> Left err
                                      Right (a,s1) -> un (f a) s1)
+
+instance Fail.MonadFail GetJSON where
+  fail x          = GetJSON (\_ -> Left x)
 
 -- | Run a JSON reader on an input String, returning some Haskell value.
 -- All input will be consumed.
@@ -86,7 +93,7 @@ readJSNull = do
   xs <- getInput
   case xs of
     'n':'u':'l':'l':xs1 -> setInput xs1 >> return JSNull
-    _ -> fail $ "Unable to parse JSON null: " ++ context xs
+    _ -> Fail.fail $ "Unable to parse JSON null: " ++ context xs
 
 tryJSNull :: GetJSON JSValue -> GetJSON JSValue
 tryJSNull k = do
@@ -102,7 +109,7 @@ readJSBool = do
   case xs of
     't':'r':'u':'e':xs1 -> setInput xs1 >> return (JSBool True)
     'f':'a':'l':'s':'e':xs1 -> setInput xs1 >> return (JSBool False)
-    _ -> fail $ "Unable to parse JSON Bool: " ++ context xs
+    _ -> Fail.fail $ "Unable to parse JSON Bool: " ++ context xs
 
 -- | Read the JSON String type
 readJSString :: GetJSON JSValue
@@ -110,7 +117,7 @@ readJSString = do
   x <- getInput
   case x of
        '"' : cs -> parse [] cs
-       _        -> fail $ "Malformed JSON: expecting string: " ++ context x
+       _        -> Fail.fail $ "Malformed JSON: expecting string: " ++ context x
  where 
   parse rs cs = 
     case cs of
@@ -119,12 +126,12 @@ readJSString = do
                           return (JSString (toJSString (reverse rs)))
       c    : ds
        | c >= '\x20' && c <= '\xff'    -> parse (c:rs) ds
-       | c < '\x20'     -> fail $ "Illegal unescaped character in string: " ++ context cs
+       | c < '\x20'     -> Fail.fail $ "Illegal unescaped character in string: " ++ context cs
        | i <= 0x10ffff  -> parse (c:rs) ds
-       | otherwise -> fail $ "Illegal unescaped character in string: " ++ context cs
+       | otherwise -> Fail.fail $ "Illegal unescaped character in string: " ++ context cs
        where
         i = (fromIntegral (fromEnum c) :: Integer)
-      _ -> fail $ "Unable to parse JSON String: unterminated String: " ++ context cs
+      _ -> Fail.fail $ "Unable to parse JSON String: unterminated String: " ++ context cs
 
   esc rs c cs = case c of
    '\\' -> parse ('\\' : rs) cs
@@ -140,9 +147,9 @@ readJSString = do
                case readHex [d1,d2,d3,d4] of
                  [(n,"")] -> parse (toEnum n : rs) cs'
 
-                 x -> fail $ "Unable to parse JSON String: invalid hex: " ++ context (show x)
-             _ -> fail $ "Unable to parse JSON String: invalid hex: " ++ context cs
-   _ ->  fail $ "Unable to parse JSON String: invalid escape char: " ++ show c
+                 x -> Fail.fail $ "Unable to parse JSON String: invalid hex: " ++ context (show x)
+             _ -> Fail.fail $ "Unable to parse JSON String: invalid hex: " ++ context cs
+   _ ->  Fail.fail $ "Unable to parse JSON String: invalid escape char: " ++ show c
 
 
 -- | Read an Integer or Double in JSON format, returning a Rational
@@ -154,12 +161,12 @@ readJSRational = do
     _        -> pos cs
 
   where 
-   pos []     = fail $ "Unable to parse JSON Rational: " ++ context []
+   pos []     = Fail.fail $ "Unable to parse JSON Rational: " ++ context []
    pos (c:cs) =
      case c of
        '0' -> frac 0 cs
        _ 
-        | not (isDigit c) -> fail $ "Unable to parse JSON Rational: " ++ context cs
+        | not (isDigit c) -> Fail.fail $ "Unable to parse JSON Rational: " ++ context cs
         | otherwise -> readDigits (digitToIntI c) cs
 
    readDigits acc [] = frac (fromInteger acc) []
@@ -189,7 +196,7 @@ readJSRational = do
    exp_digs cs = case readDec cs of
        [(a,ds)] -> do setInput ds
                       return (fromIntegral ((10::Integer) ^ (a::Integer)))
-       _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
+       _        -> Fail.fail $ "Unable to parse JSON exponential: " ++ context cs
 
    digitToIntI :: Char -> Integer
    digitToIntI ch = fromIntegral (digitToInt ch)
@@ -213,7 +220,7 @@ readSequence start end sep = do
         case dropWhile isSpace cs of
             d : ds | d == end -> setInput (dropWhile isSpace ds) >> return []
             ds                -> setInput ds >> parse []
-    _ -> fail $ "Unable to parse JSON sequence: sequence stars with invalid character: " ++ context zs
+    _ -> Fail.fail $ "Unable to parse JSON sequence: sequence stars with invalid character: " ++ context zs
 
   where parse rs = rs `seq` do
           a  <- readJSValue
@@ -223,7 +230,7 @@ readSequence start end sep = do
                                     parse (a:rs)
                    | e == end -> do setInput (dropWhile isSpace es)
                                     return (reverse (a:rs))
-            _ -> fail $ "Unable to parse JSON array: unterminated array: " ++ context ds
+            _ -> Fail.fail $ "Unable to parse JSON array: unterminated array: " ++ context ds
 
 
 -- | Read a sequence of JSON labelled fields
@@ -234,18 +241,18 @@ readAssocs start end sep = do
     c:cs | c == start -> case dropWhile isSpace cs of
             d:ds | d == end -> setInput (dropWhile isSpace ds) >> return []
             ds              -> setInput ds >> parsePairs []
-    _ -> fail "Unable to parse JSON object: unterminated object"
+    _ -> Fail.fail "Unable to parse JSON object: unterminated object"
 
   where parsePairs rs = rs `seq` do
           a  <- do k  <- do x <- readJSString ; case x of
                                 JSString s -> return (fromJSString s)
-                                _          -> fail $ "Malformed JSON field labels: object keys must be quoted strings."
+                                _          -> Fail.fail $ "Malformed JSON field labels: object keys must be quoted strings."
                    ds <- getInput
                    case dropWhile isSpace ds of
                        ':':es -> do setInput (dropWhile isSpace es)
                                     v <- readJSValue
                                     return (k,v)
-                       _      -> fail $ "Malformed JSON labelled field: " ++ context ds
+                       _      -> Fail.fail $ "Malformed JSON labelled field: " ++ context ds
 
           ds <- getInput
           case dropWhile isSpace ds of
@@ -253,8 +260,8 @@ readAssocs start end sep = do
                                     parsePairs (a:rs)
                    | e == end -> do setInput (dropWhile isSpace es)
                                     return (reverse (a:rs))
-            _ -> fail $ "Unable to parse JSON object: unterminated sequence: "
-                            ++ context ds
+            _ -> Fail.fail $ "Unable to parse JSON object: unterminated sequence: "
+                                 ++ context ds
 
 -- | Read one of several possible JS types
 readJSValue :: GetJSON JSValue
@@ -268,7 +275,7 @@ readJSValue = do
     'f' : _ -> readJSBool
     (x:_) | isDigit x || x == '-' -> JSRational False <$> readJSRational
     xs -> tryJSNull
-             (fail $ "Malformed JSON: invalid token in this context " ++ context xs)
+             (Fail.fail $ "Malformed JSON: invalid token in this context " ++ context xs)
 
 -- | Top level JSON can only be Arrays or Objects
 readJSTopType :: GetJSON JSValue
@@ -277,7 +284,7 @@ readJSTopType = do
   case cs of
     '[' : _ -> readJSArray
     '{' : _ -> readJSObject
-    _       -> fail "Invalid JSON: a JSON text a serialized object or array at the top level."
+    _       -> Fail.fail "Invalid JSON: a JSON text a serialized object or array at the top level."
 
 -- -----------------------------------------------------------------
 -- | Writing JSON
