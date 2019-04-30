@@ -37,7 +37,7 @@ module Text.JSON (
     -- ** Instance helpers
   , makeObj, valFromObj
   , JSKey(..), encJSDict, decJSDict
-  
+
   ) where
 
 import Text.JSON.Types
@@ -60,7 +60,7 @@ import qualified Data.Text as T
 
 ------------------------------------------------------------------------
 
--- | Decode a String representing a JSON value 
+-- | Decode a String representing a JSON value
 -- (either an object, array, bool, number, null)
 --
 -- This is a superset of JSON, as types other than
@@ -137,7 +137,9 @@ instance MonadPlus Result where
 
 instance Monad Result where
   return x      = Ok x
+#if !MIN_VERSION_base(4,13,0)
   fail x        = Error x
+#endif
   Ok a >>= f    = f a
   Error x >>= _ = Error x
 
@@ -199,7 +201,7 @@ instance JSON Ordering where
   showJSON = encJSString show
   readJSON = decJSString "Ordering" readOrd
     where
-     readOrd x = 
+     readOrd x =
        case x of
          "LT" -> return Prelude.LT
          "EQ" -> return Prelude.EQ
@@ -460,7 +462,7 @@ instance JSKey Int where
 instance JSKey String where
   toJSKey   = id
   fromJSKey = Just
-  
+
 -- | Encode an association list as 'JSObject' value.
 encJSDict :: (JSKey a, JSON b) => [(a,b)] -> JSValue
 encJSDict v = makeObj [ (toJSKey x, showJSON y) | (x,y) <- v ]
@@ -477,5 +479,3 @@ decJSDict l (JSObject o) = mapM rd (fromJSObject o)
                                     "unable to read dict; invalid object key")
 
 decJSDict l _ = mkError ("readJSON{"++l ++ "}: unable to read dict; expected JSON object")
-
-
