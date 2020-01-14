@@ -1,3 +1,6 @@
+Version 0.10
+  * Use MonadFail, so that it works with GHC 8.8
+
 Version 0.9.1
   * Merge-in contributions from Neil Mitchell to support GHC 7.10
 
