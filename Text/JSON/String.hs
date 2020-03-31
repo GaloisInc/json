@@ -30,12 +30,13 @@ module Text.JSON.String
      , showJSTopType
      ) where
 
+import Prelude hiding (fail)
 import Text.JSON.Types (JSValue(..),
                         JSString, toJSString, fromJSString,
                         JSObject, toJSObject, fromJSObject)
 
 import Control.Monad (liftM, ap)
-import qualified Control.Monad.Fail as Fail
+import Control.Monad.Fail (MonadFail (..))
 import Control.Applicative((<$>))
 import qualified Control.Applicative as A
 import Data.Char (isSpace, isDigit, digitToInt)
@@ -59,7 +60,7 @@ instance Monad GetJSON where
                                      Left err -> Left err
                                      Right (a,s1) -> un (f a) s1)
 
-instance Fail.MonadFail GetJSON where
+instance MonadFail GetJSON where
   fail x          = GetJSON (\_ -> Left x)
 
 -- | Run a JSON reader on an input String, returning some Haskell value.
