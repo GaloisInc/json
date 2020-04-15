@@ -45,7 +45,7 @@ import Text.JSON.String
 
 import Data.Int
 import Data.Word
-import qualified Control.Monad.Fail as Fail
+import Control.Monad.Fail (MonadFail (..))
 import Control.Monad(liftM,ap,MonadPlus(..))
 import Control.Applicative
 
@@ -141,7 +141,7 @@ instance Monad Result where
   Ok a >>= f    = f a
   Error x >>= _ = Error x
 
-instance Fail.MonadFail Result where
+instance MonadFail Result where
   fail x        = Error x
 
 -- | Convenient error generation
