@@ -16,7 +16,7 @@ license-file:       LICENSE
 author:             Galois Inc.
 maintainer:         Iavor S. Diatchki (iavor.diatchki@gmail.com)
 Copyright:          (c) 2007-2018 Galois Inc.
-cabal-version:      >= 1.6
+cabal-version:      >= 1.8
 build-type: Simple
 extra-source-files:
     CHANGES
