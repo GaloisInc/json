@@ -1,3 +1,4 @@
+cabal-version:      2.4
 name:               json
 version:            0.10
 synopsis:           Support for serialising Haskell to and from JSON
@@ -11,15 +12,15 @@ description:
     This library provides a parser and pretty printer for converting
     between Haskell values and JSON.
 category:           Web
-license:            BSD3
+license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Galois Inc.
 maintainer:         Iavor S. Diatchki (iavor.diatchki@gmail.com)
 Copyright:          (c) 2007-2018 Galois Inc.
-cabal-version:      >= 1.6
 build-type: Simple
-extra-source-files:
+extra-doc-files:
     CHANGES
+extra-source-files:
     tests/GenericTest.hs
     tests/HUnit.hs
     tests/Makefile
@@ -86,6 +87,7 @@ flag mapdict
   description: Encode Haskell maps as JSON dicts
 
 library
+  default-language: Haskell2010
   exposed-modules: Text.JSON,
                    Text.JSON.Types,
                    Text.JSON.String,
