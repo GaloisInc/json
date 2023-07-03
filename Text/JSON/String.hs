@@ -41,7 +41,7 @@ import Control.Applicative((<$>))
 import qualified Control.Applicative as A
 import Data.Char (isSpace, isDigit, digitToInt)
 import Data.Ratio (numerator, denominator, (%))
-import Numeric (readHex, readDec, showHex)
+import Numeric (readHex, readDec, showHex, readSigned, readFloat)
 
 -- -----------------------------------------------------------------
 -- | Parsing JSON
@@ -153,50 +153,12 @@ readJSString = do
 readJSRational :: GetJSON Rational
 readJSRational = do
   cs <- getInput
-  case cs of
-    '-' : ds -> negate <$> pos ds
-    _        -> pos cs
-
-  where 
-   pos []     = fail $ "Unable to parse JSON Rational: " ++ context []
-   pos (c:cs) =
-     case c of
-       '0' -> frac 0 cs
-       _ 
-        | not (isDigit c) -> fail $ "Unable to parse JSON Rational: " ++ context cs
-        | otherwise -> readDigits (digitToIntI c) cs
-
-   readDigits acc [] = frac (fromInteger acc) []
-   readDigits acc (x:xs)
-    | isDigit x = let acc' = 10*acc + digitToIntI x in 
-                      acc' `seq` readDigits acc' xs
-    | otherwise = frac (fromInteger acc) (x:xs)
-
-   frac n ('.' : ds) = 
-       case span isDigit ds of
-         ([],_) -> setInput ds >> return n
-         (as,bs) -> let x = read as :: Integer
-                        y = 10 ^ (fromIntegral (length as) :: Integer)
-                    in exponent' (n + (x % y)) bs
-   frac n cs = exponent' n cs
-
-   exponent' n (c:cs)
-    | c == 'e' || c == 'E' = (n*) <$> exp_num cs
-   exponent' n cs = setInput cs >> return n
-
-   exp_num          :: String -> GetJSON Rational
-   exp_num ('+':cs)  = exp_digs cs
-   exp_num ('-':cs)  = recip <$> exp_digs cs
-   exp_num cs        = exp_digs cs
-
-   exp_digs :: String -> GetJSON Rational
-   exp_digs cs = case readDec cs of
-       [(a,ds)] -> do setInput ds
-                      return (fromIntegral ((10::Integer) ^ (a::Integer)))
-       _        -> fail $ "Unable to parse JSON exponential: " ++ context cs
-
-   digitToIntI :: Char -> Integer
-   digitToIntI ch = fromIntegral (digitToInt ch)
+  case (reads cs, readSigned readFloat cs) of
+    ([(x,_)], _)
+      | isInfinite (x :: Double) ->
+          fail ("JSON Rational out of range: " ++ context cs)
+    (_, [(y,cs')]) -> setInput cs' >> return y
+    _ -> fail ("Unable to parse JSON Rational: " ++ context cs)
 
 
 -- | Read a list in JSON format

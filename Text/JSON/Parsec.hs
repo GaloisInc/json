@@ -78,9 +78,11 @@ p_object          = between (tok (char '{')) (tok (char '}'))
 p_number         :: CharParser () Rational
 p_number          = tok
                   $ do s <- getInput
-                       case readSigned readFloat s of
-                         [(n,s1)] -> n <$$ setInput s1
-                         _        -> mzero
+                       case (reads s, readSigned readFloat s) of
+                         ([(x,_)], _)
+                           | isInfinite (x :: Double) -> fail "number out of range"
+                         (_, [(y,s')]) -> y <$$ setInput s'
+                         _ -> mzero <?> "number"
 
 p_js_string      :: CharParser () JSString
 p_js_string       = toJSString <$$> p_string

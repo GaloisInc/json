@@ -70,7 +70,17 @@ p_object          = between (token (char '{')) (token (char '}'))
   where p_field   = (,) <$$> (p_string <** token (char ':')) <**> p_value
 
 p_number         :: ReadP Rational
-p_number          = readS_to_P (readSigned readFloat)
+p_number          = readS_to_P safeRationalReads
+
+-- reading into a Double with reads is safe for huge floating-point literals
+-- this will allow all floating-point literals that are small enough to fit
+-- into a Double (and are thus compatible with most other json implementations)
+-- to be parsed here without opening us to oversized Rational allocations
+safeRationalReads :: ReadS Rational
+safeRationalReads str =
+  case reads str of
+    [(d,_)] | not (isInfinite (d :: Double)) -> readSigned readFloat str
+    _ -> []
 
 p_js_string      :: ReadP JSString
 p_js_string       = toJSString <$$> p_string
