@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               json
-version:            0.10
+version:            0.11
 synopsis:           Support for serialising Haskell to and from JSON
 description:
     JSON (JavaScript Object Notation) is a lightweight data-interchange

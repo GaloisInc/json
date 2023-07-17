@@ -1,3 +1,7 @@
+Version 0.11
+  * Limit floating-point range to that of Double to avoid allocation
+    overflows when constructing Rationals
+
 Version 0.10
   * Use MonadFail, so that it works with GHC 8.8
 
