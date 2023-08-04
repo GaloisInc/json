@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-linux:
     docker:
-      image: alpine:latest
+      - image: alpine:latest
     resource_class: small
     parameters:
       cabal:
