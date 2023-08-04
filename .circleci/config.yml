@@ -18,9 +18,9 @@ jobs:
             apk add --no-cache binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz
 
             mkdir -p /home/circleci
-            useradd -m /home/circleci circleci
+            adduser -h /home/circleci circleci
 
-            cd /home/circleci
+            su circleci
 
       - run:
           name: Install Cabal and GHC
