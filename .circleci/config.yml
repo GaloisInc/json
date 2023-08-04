@@ -15,6 +15,7 @@ jobs:
       - run:
           name: Setup environment
           command: |
+            sudo apt-get update
             sudo NEEDRESTART_MODE=a apt-get install -y libffi-dev libffi6 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5
 
       - run:
