@@ -13,10 +13,14 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Update apt
+          name: Setup environment
           command: |
-            sudo apt-get update
-            sudo NEEDRESTART_MODE=a apt-get install -y binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz
+            apk add --no-cache binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz
+
+            mkdir -p /home/circleci
+            useradd -m /home/circleci circleci
+
+            cd /home/circleci
 
       - run:
           name: Install Cabal and GHC
