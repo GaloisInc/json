@@ -14,7 +14,7 @@ import           Data.Time.Calendar
 import           Data.Time.Calendar.Month.Compat
 import           Data.Time.Calendar.Quarter.Compat
 import           Data.Time.Clock
-import           Data.Time.LocalTime
+import           Data.Time.LocalTime.Compat
 import           Test.Hspec
 
 

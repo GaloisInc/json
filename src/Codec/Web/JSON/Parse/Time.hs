@@ -34,7 +34,7 @@ import           Data.Time.Calendar.Quarter.Compat
 import           Data.Time.Calendar.WeekDate.Compat
 import           Data.Time.Clock
 import           Data.Time.Format.ISO8601.Compat
-import           Data.Time.LocalTime
+import           Data.Time.LocalTime.Compat
 import           Data.Word
 import           Numeric
 

@@ -16,7 +16,7 @@ import           Data.Time.Calendar.OrdinalDate.Compat
 import           Data.Time.Calendar.Quarter.Compat
 import           Data.Time.Calendar.WeekDate.Compat
 import           Data.Time.Clock
-import           Data.Time.LocalTime
+import           Data.Time.LocalTime.Compat
 import           Test.Hspec
 
 
