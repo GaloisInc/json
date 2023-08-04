@@ -4,7 +4,7 @@ jobs:
   build-linux:
     docker:
       - image: cimg/base:current
-    resource_class: medium
+    resource_class: small
     parameters:
       cabal:
         type: string
@@ -51,35 +51,35 @@ jobs:
 workflows:
   workflow:
     jobs:
-#     - build-linux:
-#         name: linux-8.4.4
-#         cabal: 3.6.2.0
-#         ghc: 8.4.4
-#     - build-linux:
-#         name: linux-8.6.5
-#         cabal: 3.6.2.0
-#         ghc: 8.6.5
-#     - build-linux:
-#         name: linux-8.8.4
-#         cabal: 3.6.2.0
-#         ghc: 8.8.4
-#     - build-linux:
-#         name: linux-8.10.7
-#         cabal: 3.6.2.0
-#         ghc: 8.10.7
-#     - build-linux:
-#         name: linux-9.0.2
-#         cabal: 3.6.2.0
-#         ghc: 9.0.2
+      - build-linux:
+          name: linux-8.4.4
+          cabal: 3.6.2.0
+          ghc: 8.4.4
+      - build-linux:
+          name: linux-8.6.5
+          cabal: 3.6.2.0
+          ghc: 8.6.5
+      - build-linux:
+          name: linux-8.8.4
+          cabal: 3.6.2.0
+          ghc: 8.8.4
+      - build-linux:
+          name: linux-8.10.7
+          cabal: 3.6.2.0
+          ghc: 8.10.7
+      - build-linux:
+          name: linux-9.0.2
+          cabal: 3.6.2.0
+          ghc: 9.0.2
       - build-linux:
           name: linux-9.2.7
           cabal: 3.6.2.0
           ghc: 9.2.7
-#     - build-linux:
-#         name: linux-9.4.5
-#         cabal: 3.10.1.0
-#         ghc: 9.4.5
-#     - build-linux:
-#         name: linux-9.6.2
-#         cabal: 3.10.1.0
-#         ghc: 9.6.2
+      - build-linux:
+          name: linux-9.4.5
+          cabal: 3.10.1.0
+          ghc: 9.4.5
+      - build-linux:
+          name: linux-9.6.2
+          cabal: 3.10.1.0
+          ghc: 9.6.2
