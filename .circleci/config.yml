@@ -18,7 +18,7 @@ jobs:
             apk add --no-cache binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz
 
             mkdir -p /home/circleci
-            adduser -h /home/circleci circleci
+            adduser -Dh /home/circleci circleci
 
             su circleci
 
