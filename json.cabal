@@ -1,121 +1,151 @@
 cabal-version:      2.4
 name:               json
-version:            0.11
-synopsis:           Support for serialising Haskell to and from JSON
+version:            1.0.0.0
+synopsis:           JSON de-/serialization
 description:
-    JSON (JavaScript Object Notation) is a lightweight data-interchange
-    format. It is easy for humans to read and write. It is easy for
-    machines to parse and generate.  It is based on a subset of the
-    JavaScript Programming Language, Standard ECMA-262 3rd Edition -
-    December 1999.
-    .
-    This library provides a parser and pretty printer for converting
-    between Haskell values and JSON.
-category:           Web
+  This package provides basic functionality for decoding from and
+  encoding to JSON (JavaScript Object Notation), as described in
+  <https://datatracker.ietf.org/doc/html/rfc8259 RFC 8259>.
+
+category:           Codec, Web
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Galois Inc.
-maintainer:         Iavor S. Diatchki (iavor.diatchki@gmail.com)
+maintainer:         Oleksii Divak (frozenwitness@gmail.com)
+                  , Iavor S. Diatchki (iavor.diatchki@gmail.com)
 Copyright:          (c) 2007-2018 Galois Inc.
-build-type: Simple
-extra-doc-files:
-    CHANGES
-extra-source-files:
-    tests/GenericTest.hs
-    tests/HUnit.hs
-    tests/Makefile
-    tests/Parallel.hs
-    tests/QC.hs
-    tests/QuickCheckUtils.hs
-    tests/Unit.hs
-    tests/unit/fail1.json
-    tests/unit/fail10.json
-    tests/unit/fail11.json
-    tests/unit/fail12.json
-    tests/unit/fail13.json
-    tests/unit/fail14.json
-    tests/unit/fail15.json
-    tests/unit/fail16.json
-    tests/unit/fail17.json
-    tests/unit/fail18.json
-    tests/unit/fail19.json
-    tests/unit/fail2.json
-    tests/unit/fail20.json
-    tests/unit/fail21.json
-    tests/unit/fail22.json
-    tests/unit/fail23.json
-    tests/unit/fail24.json
-    tests/unit/fail25.json
-    tests/unit/fail26.json
-    tests/unit/fail27.json
-    tests/unit/fail28.json
-    tests/unit/fail29.json
-    tests/unit/fail3.json
-    tests/unit/fail30.json
-    tests/unit/fail31.json
-    tests/unit/fail32.json
-    tests/unit/fail33.json
-    tests/unit/fail4.json
-    tests/unit/fail5.json
-    tests/unit/fail6.json
-    tests/unit/fail7.json
-    tests/unit/fail8.json
-    tests/unit/fail9.json
-    tests/unit/pass1.json
-    tests/unit/pass2.json
-    tests/unit/pass3.json
+build-type:         Simple
+extra-doc-files:    CHANGES
 
 source-repository head
-    type:     git
-    location: https://github.com/GaloisInc/json.git
-
-flag split-base
-  default: True
-  description: Use the new split base package.
-flag parsec
-  default: True
-  description: Add support for parsing with Parsec.
-flag pretty
-  default: True
-  description: Add support for using pretty printing combinators.
-flag generic
-  default: True
-  description: Add support for generic encoder.
-
-flag mapdict
-  default: False
-  description: Encode Haskell maps as JSON dicts
+  type:     git
+  location: https://github.com/GaloisInc/json.git
 
 library
+  hs-source-dirs:   src
+
+  exposed-modules:  Codec.Web.JSON.Decode
+                    Codec.Web.JSON.Decode.Core
+                    Codec.Web.JSON.Decode.Encoding
+                    Codec.Web.JSON.Decode.Questionable
+
+                    Codec.Web.JSON.Encode
+                    Codec.Web.JSON.Encode.Core
+
+  other-modules:    Codec.Web.JSON.Build.Boolean
+                    Codec.Web.JSON.Build.Null
+                    Codec.Web.JSON.Build.String
+                    Codec.Web.JSON.Build.Time
+                    Codec.Web.JSON.Build.UUID
+
+                    Codec.Web.JSON.Decode.Array.Core
+                    Codec.Web.JSON.Decode.Array.Elements
+
+                    Codec.Web.JSON.Decode.Object.Core
+                    Codec.Web.JSON.Decode.Object.Bounded
+                    Codec.Web.JSON.Decode.Object.Linear
+                    Codec.Web.JSON.Decode.Object.Plain
+                    Codec.Web.JSON.Decode.Stream
+
+                    Codec.Web.JSON.Parse.Array
+                    Codec.Web.JSON.Parse.Boolean
+                    Codec.Web.JSON.Parse.Knot
+                    Codec.Web.JSON.Parse.Null
+                    Codec.Web.JSON.Parse.Number
+                    Codec.Web.JSON.Parse.Object
+                    Codec.Web.JSON.Parse.String
+                    Codec.Web.JSON.Parse.Time
+                    Codec.Web.JSON.Parse.UUID
+
+                    Data.Attoparsec.Error
+
+                    Data.ByteString.Copy
+                    Data.ByteString.Lazy.Copy
+
+                    Data.RadixTree.Char
+
+                    Data.Text.Copy
+
+                    Encoding.Mixed.Error
+
+  ghc-options:      -Wall
+
+  build-depends:    attoparsec    >= 0.13     && < 0.15
+                  , base          >= 4.11     && < 5
+                  , bytestring    >= 0.11     && < 0.13
+                  , containers    >= 0.5.10.2 && < 0.7
+                  , primitive     >= 0.7      && < 0.9
+                  , selective     >= 0.4      && < 0.8
+                  , semigroupoids >= 5        && < 7
+                  , scientific    >= 0.3.7    && < 0.4
+                  , text          >= 1.2.3    && < 1.3  || >= 2.0 && < 2.1
+                  , time          >= 1.6.0.1  && < 1.13
+                  , time-compat   >= 1.9.4    && < 1.10
+                  , uuid-types    >= 1.0.5    && < 1.1
+
   default-language: Haskell2010
-  exposed-modules: Text.JSON,
-                   Text.JSON.Types,
-                   Text.JSON.String,
-                   Text.JSON.ReadP
-  ghc-options:     -Wall -O2
-
-  if flag(split-base)
-    if flag(generic)
-      build-depends:    base >=4.9 && <5, syb >= 0.3.3
-
-      exposed-modules:  Text.JSON.Generic
-      Cpp-Options:      -DBASE_4
-    else
-      build-depends:    base >= 3 && <4
-
-    build-depends:   array, containers, bytestring, mtl, text
-
-    if flag(parsec)
-      build-depends:    parsec
-      exposed-modules:  Text.JSON.Parsec
-    if flag(pretty)
-      build-depends:    pretty
-      exposed-modules:  Text.JSON.Pretty
-  else
-    build-depends:    base < 3
-
-  if flag(mapdict)
-     cpp-options:     -DMAP_AS_DICT
 
 
 
+test-suite conformance
+  type:             exitcode-stdio-1.0
+
+  main-is:          Main.hs
+
+  hs-source-dirs:   test/conformance
+
+  other-modules:    Test.JSON.Decode.Array
+                    Test.JSON.Decode.Boolean
+                    Test.JSON.Decode.Decoders
+                    Test.JSON.Decode.Null
+                    Test.JSON.Decode.Number
+                    Test.JSON.Decode.Object
+                    Test.JSON.Decode.Stream
+                    Test.JSON.Decode.String
+                    Test.JSON.Decode.Time
+                    Test.JSON.Decode.UUID
+                    Test.JSON.Decode.Value
+
+                    Test.JSON.Encode.Array
+                    Test.JSON.Encode.Boolean
+                    Test.JSON.Encode.Null
+                    Test.JSON.Encode.Number
+                    Test.JSON.Encode.Object
+                    Test.JSON.Encode.String
+                    Test.JSON.Encode.Time
+                    Test.JSON.Encode.UUID
+
+  ghc-options:      -Wall
+
+  build-depends:    base
+                  , bytestring
+                  , hspec       >= 2 && < 3
+                  , json
+                  , selective
+                  , text
+                  , time
+                  , time-compat
+                  , uuid-types
+
+  default-language: Haskell2010
+
+test-suite radix-tree
+  type:             exitcode-stdio-1.0
+
+  main-is:          Main.hs
+
+  hs-source-dirs:   src
+                  , test/radix-tree
+
+  other-modules:    Data.RadixTree.Char
+
+                    Test.RadixTree.Char
+
+  ghc-options:      -Wall
+
+  build-depends:    base
+                  , containers
+                  , hspec      >= 2 && < 3
+                  , primitive
+
+  default-language: Haskell2010
