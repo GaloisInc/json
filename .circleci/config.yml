@@ -2,8 +2,8 @@ version: 2.1
 
 jobs:
   build-linux:
-    machine:
-      image: ubuntu-2204:current
+    docker:
+      image: alpine:latest
     resource_class: small
     parameters:
       cabal:
@@ -16,6 +16,7 @@ jobs:
           name: Update apt
           command: |
             sudo apt-get update
+            sudo NEEDRESTART_MODE=a apt-get install -y binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz
 
       - run:
           name: Install Cabal and GHC
@@ -50,35 +51,35 @@ jobs:
 workflows:
   workflow:
     jobs:
-      - build-linux:
-          name: linux-8.4.4
-          cabal: 3.6.2.0
-          ghc: 8.4.4
-      - build-linux:
-          name: linux-8.6.5
-          cabal: 3.6.2.0
-          ghc: 8.6.5
-      - build-linux:
-          name: linux-8.8.4
-          cabal: 3.6.2.0
-          ghc: 8.8.4
-      - build-linux:
-          name: linux-8.10.7
-          cabal: 3.6.2.0
-          ghc: 8.10.7
-      - build-linux:
-          name: linux-9.0.2
-          cabal: 3.6.2.0
-          ghc: 9.0.2
+#     - build-linux:
+#         name: linux-8.4.4
+#         cabal: 3.6.2.0
+#         ghc: 8.4.4
+#     - build-linux:
+#         name: linux-8.6.5
+#         cabal: 3.6.2.0
+#         ghc: 8.6.5
+#     - build-linux:
+#         name: linux-8.8.4
+#         cabal: 3.6.2.0
+#         ghc: 8.8.4
+#     - build-linux:
+#         name: linux-8.10.7
+#         cabal: 3.6.2.0
+#         ghc: 8.10.7
+#     - build-linux:
+#         name: linux-9.0.2
+#         cabal: 3.6.2.0
+#         ghc: 9.0.2
       - build-linux:
           name: linux-9.2.7
           cabal: 3.6.2.0
           ghc: 9.2.7
-      - build-linux:
-          name: linux-9.4.5
-          cabal: 3.10.1.0
-          ghc: 9.4.5
-      - build-linux:
-          name: linux-9.6.2
-          cabal: 3.10.1.0
-          ghc: 9.6.2
+#     - build-linux:
+#         name: linux-9.4.5
+#         cabal: 3.10.1.0
+#         ghc: 9.4.5
+#     - build-linux:
+#         name: linux-9.6.2
+#         cabal: 3.10.1.0
+#         ghc: 9.6.2
