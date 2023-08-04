@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-linux:
     docker:
-      - image: alpine:latest
+      - image: cimg/base:current
     resource_class: small
     parameters:
       cabal:
@@ -15,12 +15,7 @@ jobs:
       - run:
           name: Setup environment
           command: |
-            apk add --no-cache binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz
-
-            mkdir -p /home/circleci
-            adduser -Dh /home/circleci circleci
-
-            su circleci
+            sudo NEEDRESTART_MODE=a apt-get install -y libffi-dev libffi6 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5
 
       - run:
           name: Install Cabal and GHC
