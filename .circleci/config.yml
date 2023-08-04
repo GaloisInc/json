@@ -4,7 +4,7 @@ jobs:
   build-linux:
     docker:
       - image: cimg/base:current
-    resource_class: middle
+    resource_class: medium
     parameters:
       cabal:
         type: string
