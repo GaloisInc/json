@@ -72,4 +72,4 @@ streamArray f z =
                             again <- tilNextValueP
                             pure $ if again
                                      then go t' (i + 1)
-                                     else Return z
+                                     else Return t'

@@ -85,15 +85,16 @@ decoders =
     describe "source" $ do
       it "Valid" $ do
         unsource ( source
-                     (streamArray (\_ _ -> stream $ flip (,) () <$> rawValue) ())
+                     (streamArray (\i _ -> stream $ (\a -> (a, i + 1)) <$> rawValue) 0)
                      (BSLC.fromChunks chunks)
                  )
-          `shouldBe` Identity (Success "A" (result, ()))
+          `shouldBe` Identity (Success "A" (result, 8 :: Int))
 
       it "Malformed" $ do
-        unsource ( source
-                     (streamArray (\_ _ -> stream $ flip (,) () <$> rawValue) ())
-                     (BSLC.fromChunks malformed)
+        unsource (
+          source
+            (streamArray (\i _ -> stream $ (\a -> (a, i + 1)) <$> rawValue) (0 :: Int))
+            (BSLC.fromChunks malformed)
                  )
           `shouldSatisfy` \f ->
                             case f of
@@ -104,16 +105,18 @@ decoders =
       it "Valid" $ do
         ref <- newIORef chunks
         unsource ( sourceF
-                     (streamArray (\_ _ -> stream $ flip (,) () <$> rawValue) ())
+                     (streamArray (\i _ -> stream $ (\a -> (a, i + 1)) <$> rawValue) 0)
                      (chunksIO ref)
                  )
-          `shouldReturn` Success "A" (result, ())
+          `shouldReturn` Success "A" (result, 8 :: Int)
 
       it "Malformed" $ do
         ref <- newIORef malformed
-        output <- unsource $ sourceF
-                               (streamArray (\_ _ -> stream $ flip (,) () <$> rawValue) ())
-                               (chunksIO ref)
+        output <-
+          unsource $
+            sourceF
+              (streamArray (\i _ -> stream $ (\a -> (a, i + 1)) <$> rawValue) (0 :: Int))
+              (chunksIO ref)
         output `shouldSatisfy` \f -> case f of
                                        Failure "? false" (Path "$") _ -> True
                                        _                              -> False

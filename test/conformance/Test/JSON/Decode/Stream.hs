@@ -46,19 +46,24 @@ bouncer ref = do
 --   consuming options 0 to 25 in sequence.
 square :: Expectation
 square = do
-  let input = flip streamArray () $ \_ n ->
-                     streamArray (\_ m -> JSON.stream $ (\i -> ((n, m, i), ())) <$> int) ()
+  -- The streamed tuple is (accumulator, first dimension, second dimension, array value)
+  let input = flip streamArray 0 $ \acc0 n ->
+                flip streamArray acc0 $ \acc1 m ->
+                  JSON.stream $ (\i -> ((acc1, n, m, i), acc1 + 1)) <$> int
 
   ref <- newIORef 0
 
-  let go :: Source IO BSC.ByteString (Int, Int, Int) () -> IO ()
+  let go :: Source IO BSC.ByteString (Int, Int, Int, Int) Int -> IO ()
       go s =
         case s of
-          Step (n, m, i) s' -> if i == 5 * n + m + 1
-                                 then do writeIORef ref i
-                                         go s'
+          Step (acc, n, m, i) s' -> if acc == 5 * n + m
+                                      then if i == acc + 1
+                                             then do writeIORef ref i
+                                                     go s'
 
-                                 else fail $ "i /= 5 * n + m + 1 " <> show (n, m, i)
+                                             else fail $ "i /= acc + 1 " <> show (acc, i)
+
+                                      else fail $ "acc /= 5 * n + m " <> show (acc, n, m)
 
           Effect e -> e >>= go
 
@@ -109,23 +114,28 @@ unweave _     _     = Nothing
 --   consuming options 0 to 9 in sequence.
 mesh :: Expectation
 mesh = do
-  let input = flip (streamObject textFoldName) () $ \_ n ->
-                     streamObject textFoldName
-                       (\_ m -> JSON.stream $ (\i -> ((n, m, i), ())) <$> int) ()
+  -- The streamed tuple is (accumulator, outer pair name, inner pair name, array value)
+  let input = flip (streamObject textFoldName) 0 $ \acc0 n ->
+                flip (streamObject textFoldName) acc0 $ \acc1 m ->
+                  JSON.stream $ (\i -> ((acc1, n, m, i), acc1 + 1)) <$> int
 
   ref <- newIORef 0
 
-  let go :: Source IO BSC.ByteString (Text, Text, Int) () -> IO ()
+  let go :: Source IO BSC.ByteString (Int, Text, Text, Int) Int -> IO ()
       go s =
         case s of
-          Step (n, m, i) s' ->
+          Step (acc, n, m, i) s' ->
             case unweave n m of
-              Just j
-                | j == i -> do
-                    writeIORef ref i
-                    go s'
+              Just j ->
+                if i == acc + 1
+                  then if j == i
+                         then do
+                           writeIORef ref i
+                           go s'
 
-                | otherwise -> fail $ "Unweave for " <> show (n, m) <> " is not " <> show i
+                         else fail $ "Unweave for " <> show (n, m) <> " is not " <> show i
+
+                  else fail $ "Accumulator is " <> show acc <> ", and i is " <> show i
 
               _ -> fail $ "No unweave for " <> show (n, m)
 
