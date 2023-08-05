@@ -60,6 +60,15 @@ array =
         plain $ \a b ->
           decode (JSON.array $ \_ -> rawValue) (a <> "A") `shouldBe` Success "A" b
 
+    describe "Array" $ do
+      describe "No trail" $
+        plain $ \a _ ->
+          decode skipArray a `shouldBe` Success "" ()
+
+      describe "Trail" $
+        plain $ \a _ ->
+          decode skipArray (a <> "A") `shouldBe` Success "A" ()
+
     describe "Raw" $ do
       describe "No trail" $
         plain $ \a _ ->

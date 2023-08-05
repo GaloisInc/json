@@ -11,6 +11,7 @@ module Test.JSON.Decode.Number
 import           Codec.Web.JSON.Decode
 
 import qualified Data.ByteString.Lazy.Char8 as BSLC
+import           Data.String
 import           Test.Hspec
 
 
@@ -129,8 +130,6 @@ largeFloat decoder = do
 
 
 
-
-
 maxRealFloat :: forall a. RealFloat a => a
 maxRealFloat = encodeFloat m (e' - e)
   where
@@ -185,6 +184,89 @@ floatEdges decoder = do
       `shouldSatisfy` \f -> case f of
                               Success "" v -> isNegativeZero v
                               _            -> False
+
+
+
+raw :: IsString a => (a -> Expectation) -> Spec
+raw f = do
+  it "Zero" $
+    f "0"
+
+  it "Negative zero" $
+    f "-0"
+
+  it "Integer" $
+    f "123456789"
+
+  it "Negative integer" $
+    f "-123456789"
+
+  it "Fractional" $
+    f "123456789.123456789"
+
+  it "Negative fractional" $
+    f "-123456789.123456789"
+
+  it "Fractional, under one" $
+    f "0.0000000123456789"
+
+  it "Negative fractional, under one" $
+    f "-0.0000000123456789"
+
+  it "Integer with exponent" $
+    f "123456789e123456789"
+
+  it "Integer with positive exponent" $
+    f "123456789e+123456789"
+
+  it "Integer with negative exponent" $
+    f "123456789e-123456789"
+
+  it "Negative integer with exponent" $
+    f "-123456789e123456789"
+
+  it "Negative integer with positive exponent" $
+    f "-123456789e+123456789"
+
+  it "Negative integer with negative exponent" $
+    f "-123456789e-123456789"
+
+  it "Fractional with exponent" $
+    f "123456789e123456789"
+
+  it "Fractional with positive exponent" $
+    f "123456789.123456789e+123456789"
+
+  it "Fractional with negative exponent" $
+    f "123456789.123456789e-123456789"
+
+  it "Negative fractional with exponent" $
+    f "-123456789.123456789e123456789"
+
+  it "Negative fractional with positive exponent" $
+    f "-123456789.123456789e+123456789"
+
+  it "Negative fractional with negative exponent" $
+    f "-123456789.123456789e-123456789"
+
+  it "Fractional (sub one) with exponent" $
+    f "0.00000000123456789e123456789"
+
+  it "Fractional (sub one) with positive exponent" $
+    f "0.00000000123456789e+123456789"
+
+  it "Fractional (sub one) with negative exponent" $
+    f "0.00000000123456789e-123456789"
+
+  it "Negative fractional (sub one) with exponent" $
+    f "-0.00000000123456789e123456789"
+
+  it "Negative fractional (sub one) with positive exponent" $
+    f "-0.00000000123456789e+123456789"
+
+  it "Negative fractional (sub one) with negative exponent" $
+    f "-0.00000000123456789e-123456789"
+
 
 
 
@@ -268,3 +350,21 @@ number = do
       unsignedLargeIntegral scientific
       signedLargeIntegral scientific
       largeFloat scientific
+
+    describe "Skip" $ do
+      describe "No trail" $
+        raw $ \a ->
+          decode skipNumber a `shouldBe` Success "" ()
+
+      describe "Trail" $
+        raw $ \a ->
+          decode skipNumber (a <> "A") `shouldBe` Success "A" ()
+
+    describe "Raw" $ do
+      describe "No trail" $
+        raw $ \a ->
+          decode rawNumber a `shouldBe` Success "" a
+
+      describe "Trail" $
+        raw $ \a ->
+          decode rawNumber (a <> "A") `shouldBe` Success "A" a

@@ -446,7 +446,20 @@ string =
           decode (lazyByteString' lenient 4) a
             `shouldBe` Success "" (toLazyByteString $ stringUtf8 b)
 
-    describe "raw" $ do
+    describe "Skip" $ do
+      describe "Basic" $ do
+        utf8String $ \a (_ :: String) ->
+          decode skipString a `shouldBe` Success "" ()
+
+      describe "Basic (trail)" $ do
+        utf8String $ \a (_ :: String) ->
+          decode skipString (a <> "A") `shouldBe` Success "A" ()
+
+      describe "Conformance" $ do
+        utf8Conformance $ \a (_ :: String) ->
+          decode (skipString' lenient) a `shouldBe` Success "" ()
+
+    describe "Raw" $ do
       describe "Basic" $ do
         utf8String $ \a (_ :: String) ->
           decode rawString a `shouldBe` Success "" a

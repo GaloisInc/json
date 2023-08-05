@@ -131,6 +131,16 @@ object =
         monadic $ \input result template ->
           decode (JSON.object template) input `shouldBe` Success "" result
 
+    describe "Skip" $ do
+      describe "No trail" $
+        plain $ \a _ ->
+          decode skipObject a `shouldBe` Success "" ()
+
+      describe "Trail" $
+        plain $ \a _ ->
+          decode skipObject (a <> "A") `shouldBe` Success "A" ()
+
+
     describe "Raw" $ do
       describe "No trail" $
         plain $ \a _ ->
