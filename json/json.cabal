@@ -1,0 +1,105 @@
+cabal-version:      2.4
+name:               json
+version:            1.0.0.0
+synopsis:           RFC 8259 JSON
+description:
+  RFC 8259 JSON as a type, with efficient encoding and decoding functions for it.
+
+category:           Codec
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Oleksii Divak
+maintainer:         Oleksii Divak <frozenwitness@gmail.com>
+copyright:          (c) Galois Inc. 2007,
+                    (c) Oleksii Divak 2024
+build-type: Simple
+extra-doc-files:
+  CHANGELOG.md
+  README.md
+
+
+source-repository head
+  type:     git
+  location: https://github.com/GaloisInc/json.git
+  subdir:   json
+
+
+library
+  default-language: Haskell2010
+
+  hs-source-dirs:   src
+
+  exposed-modules:  Codec.JSON.Encoder
+                    Codec.JSON.Encoder.Unsafe
+
+                    Codec.JSON.Decoder
+                    Codec.JSON.Decoder.TH
+                    Codec.JSON.Decoder.Stream
+                    Codec.JSON.Decoder.Unsafe
+
+                    Data.JSON
+                    Data.JSON.Unsafe
+
+                    Parser.Lathe.JSON
+
+
+                    Codec.JSON.Decoder.Composite.Internal
+                    Codec.JSON.Decoder.JSON.Internal
+                    Codec.JSON.Decoder.Literals.Internal
+                    Codec.JSON.Decoder.Stream.Internal
+                    Codec.JSON.Decoder.String.Internal
+
+  other-modules:    Codec.JSON.Decoder.Array
+                    Codec.JSON.Decoder.Array.Internal
+                    Codec.JSON.Decoder.Array.TH
+                    Codec.JSON.Decoder.JSON
+                    Codec.JSON.Decoder.Internal
+                    Codec.JSON.Decoder.Internal.TH
+                    Codec.JSON.Decoder.Literals
+                    Codec.JSON.Decoder.Number
+                    Codec.JSON.Decoder.Number.Internal
+                    Codec.JSON.Decoder.Object
+                    Codec.JSON.Decoder.Object.Internal
+                    Codec.JSON.Decoder.Object.TH
+                    Codec.JSON.Decoder.String
+
+                    Codec.JSON.Encoder.Internal
+
+                    Data.JSON.Internal
+
+  build-depends:    base             >= 4.12   && < 5
+                  , bytestring       >= 0.10.4 && < 0.13
+                  , lathe                         < 0.2
+                  , primitive        >= 0.7    && < 0.10
+                  , radix-tree       >= 1.1    && < 1.2
+                  , semigroupoids                 < 6.1
+                  , template-haskell >= 2.17   && < 3
+                  , text             >= 2      && < 2.2
+
+  ghc-options:      -Wall
+
+
+test-suite properties
+  type:             exitcode-stdio-1.0
+
+  build-depends:    base
+                  , bytestring
+                  , lathe
+                  , hspec         >= 2   && < 3
+                  , json
+                  , radix-tree
+                  , random        >= 1.2 && < 1.3
+                  , semigroupoids
+                  , text
+
+  main-is:          Main.hs
+
+  other-modules:    Test.JSON.Decoder
+                    Test.JSON.Decoder.Stream
+                    Test.JSON.Encoder
+
+  hs-source-dirs:   test/properties
+
+  ghc-options:      -Wall
+
+  default-language: Haskell2010
