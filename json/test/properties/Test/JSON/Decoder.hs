@@ -17,8 +17,10 @@ import           Data.ByteString.Builder
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as LB
 import           Data.Functor.Apply
+import           Data.Primitive.ByteArray
 import qualified Data.RadixTree.Word8.Strict as Radix
 import           Data.String
+import qualified Data.Text.Array as T
 import qualified Data.Text.Internal as T (Text (..))
 import qualified Data.Text.Internal.Lazy as LT (Text (..))
 import           GHC.Base (unsafeChr)
@@ -325,8 +327,11 @@ core = do
     describe "unsafeText" $ do
       stringlike JSON.unsafeText
       check JSON.unsafeText surrogates $
-        T.Text [ 0x61, 0x62, 0x63, 0x64, 0xED, 0xA0, 0x80, 0xED, 0xBF, 0xBF
-               , 0x7C, 0x65, 0x66, 0xED, 0xA1, 0x92, 0x67, 0x68, 0x69, 0x6A ] 0 20
+        let !(ByteArray arr) =
+              [ 0x61, 0x62, 0x63, 0x64, 0xED, 0xA0, 0x80, 0xED, 0xBF, 0xBF
+              , 0x7C, 0x65, 0x66, 0xED, 0xA1, 0x92, 0x67, 0x68, 0x69, 0x6A ]
+
+        in T.Text (T.ByteArray arr) 0 20
 
     describe "lazyText"       $ do
       stringlike JSON.lazyText
@@ -339,10 +344,11 @@ core = do
     describe "unsafeLazyText" $ do
       stringlike JSON.unsafeLazyText
       check JSON.unsafeLazyText surrogates $
-        LT.Chunk
-          ( T.Text [ 0x61, 0x62, 0x63, 0x64, 0xED, 0xA0, 0x80, 0xED, 0xBF, 0xBF
-                   , 0x7C, 0x65, 0x66, 0xED, 0xA1, 0x92, 0x67, 0x68, 0x69, 0x6A ] 0 20 )
-          LT.Empty
+        let !(ByteArray arr) =
+              [ 0x61, 0x62, 0x63, 0x64, 0xED, 0xA0, 0x80, 0xED, 0xBF, 0xBF
+              , 0x7C, 0x65, 0x66, 0xED, 0xA1, 0x92, 0x67, 0x68, 0x69, 0x6A ]
+
+        in LT.Chunk (T.Text (T.ByteArray arr) 0 20) LT.Empty
 
 
   describe "array" $ do

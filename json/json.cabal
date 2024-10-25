@@ -87,6 +87,7 @@ test-suite properties
                   , lathe
                   , hspec         >= 2   && < 3
                   , json
+                  , primitive
                   , radix-tree
                   , random        >= 1.2 && < 1.3
                   , semigroupoids
