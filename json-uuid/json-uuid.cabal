@@ -1,0 +1,60 @@
+cabal-version:      2.4
+name:               json-uuid
+version:            0.1.0.0
+synopsis:           json + uuid-types
+description:
+  Optional uuid-types dependency for the json package.
+
+category:           Codec
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Oleksii Divak
+maintainer:         Oleksii Divak <frozenwitness@gmail.com>
+copyright:          (c) Galois, Inc. 2007,
+                    (c) Oleksii Divak 2024
+extra-doc-files:
+  CHANGELOG.md
+  README.md
+
+
+source-repository head
+  type:     git
+  location: https://github.com/GaloisInc/json.git
+  subdir:   json-uuid
+
+
+library
+  default-language: Haskell2010
+
+  hs-source-dirs:   src
+
+  exposed-modules:  Codec.JSON.Decoder.UUID
+                    Codec.JSON.Encoder.UUID
+
+  build-depends:    base       >= 4.12   && < 5
+                  , bytestring >= 0.10.4 && < 0.13
+                  , json       >= 1      && < 1.1
+                  , lathe      >= 0.1    && < 0.2
+                  , uuid-types >= 1      && < 1.1
+
+  ghc-options:      -Wall
+
+
+
+test-suite properties
+  type:             exitcode-stdio-1.0
+
+  default-language: Haskell2010
+
+  build-depends:    base
+                  , bytestring
+                  , hspec
+                  , json
+                  , json-uuid
+                  , uuid-types
+
+  main-is:          Main.hs
+
+  hs-source-dirs:   test/properties
+
+  ghc-options:      -Wall

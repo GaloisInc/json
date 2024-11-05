@@ -1,0 +1,56 @@
+name: CI
+on:
+  - push
+  - pull_request
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  main:
+    name: GHC ${{ matrix.ghc }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    # https://github.com/orgs/community/discussions/57827
+    if: github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name !=
+      github.event.pull_request.base.repo.full_name
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        ghc:
+          - "9.0"
+          - "9.2"
+          - "9.4"
+          - "9.6"
+          - "9.8"
+          - "9.10"
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - uses: haskell-actions/setup@v2
+      id: setup-haskell-cabal
+      with:
+        ghc-version: ${{ matrix.ghc }}
+
+    - uses: actions/cache@v4
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}
+
+    - name: Cabal version
+      run: |
+        cabal --version
+
+    - name: Build & Test
+      run: |
+        cabal build all --enable-tests
+        cabal test all --enable-tests --test-show-details=direct

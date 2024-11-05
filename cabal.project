@@ -1,0 +1,4 @@
+packages: json/json.cabal
+        , json-pretty/json-pretty.cabal
+        , json-time/json-time.cabal
+        , json-uuid/json-uuid.cabal
