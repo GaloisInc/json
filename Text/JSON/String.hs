@@ -51,11 +51,10 @@ newtype GetJSON a = GetJSON { un :: String -> Either String (a,String) }
 
 instance Functor GetJSON where fmap = liftM
 instance A.Applicative GetJSON where
-  pure  = return
+  pure x        = GetJSON (\s -> Right (x,s))
   (<*>) = ap
 
 instance Monad GetJSON where
-  return x        = GetJSON (\s -> Right (x,s))
   GetJSON m >>= f = GetJSON (\s -> case m s of
                                      Left err -> Left err
                                      Right (a,s1) -> un (f a) s1)
