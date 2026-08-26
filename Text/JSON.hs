@@ -124,7 +124,7 @@ instance Functor Result where fmap = liftM
 
 instance Applicative Result where
   (<*>) = ap
-  pure  = return
+  pure x      = Ok x
 
 instance Alternative Result where
   Ok a    <|> _ = Ok a
@@ -137,7 +137,6 @@ instance MonadPlus Result where
   mzero          = Error "Result: MonadPlus.empty"
 
 instance Monad Result where
-  return x      = Ok x
   Ok a >>= f    = f a
   Error x >>= _ = Error x
 
